@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useEditor } from './hooks/useEditor';
 import ProjectHub from './hub/ProjectHub';
 import EditorLayout from './editor/ui/EditorLayout';
@@ -15,6 +15,9 @@ function App() {
   const [appState, setAppState] = useState('hub');
   const [currentProject, setCurrentProject] = useState(null);
 
+  // Determinar tipo de projeto (2d ou 3d)
+  const projectType = currentProject?.type || '3d';
+
   const {
     containerRef,
     engine,
@@ -27,10 +30,11 @@ function App() {
     removeObject,
     refreshObjects
   } = useEditor({
-    backgroundColor: 0x1a1a1a,
-    enableShadows: true,
+    backgroundColor: projectType === '2d' ? 0x222222 : 0x1a1a1a,
+    enableShadows: projectType === '3d',
     antialias: true,
-    mode: 'dev'
+    mode: 'dev',
+    projectType: projectType
   });
 
   // Obter objeto Three.js a partir do nome selecionado
@@ -86,63 +90,99 @@ function App() {
   useEffect(() => {
     if (!isReady || !engine || appState !== 'editor') return;
 
-    // Verificar se já foi inicializado
-    if (engine.objects.has('Cylinder')) {
+    // Verificar se já foi inicializado (usar marcador diferente para 2D/3D)
+    const initMarker = engine.is2D ? '__2d_initialized__' : 'Cylinder';
+    if (engine.objects.has(initMarker) || engine.scene.getObjectByName(initMarker)) {
       console.log('Scene already initialized, skipping...');
       return;
     }
 
-    console.log('=== INITIALIZING SCENE ===');
+    console.log(`=== INITIALIZING ${engine.is2D ? '2D' : '3D'} SCENE ===`);
 
-    // Adicionar luzes padrão (com ícone visual e na hierarquia)
-    engine.addAmbientLight('Ambient Light', {
-      color: 0xffffff,
-      intensity: 0.3  // Baixo para permitir mais contraste
-    });
+    if (engine.is2D) {
+      // ============ CENA 2D ============
+      // Adicionar luz ambiente (suficiente para ver sprites)
+      engine.addAmbientLight('Ambient Light', {
+        color: 0xffffff,
+        intensity: 1.0
+      });
 
-    engine.addDirectionalLight('Directional Light', {
-      color: 0xffffff,
-      intensity: 1.0,  // Alto para sombras mais definidas
-      position: [10, 10, 5],
-      castShadow: true
-    });
+      // Criar sprite de exemplo
+      const sprite = engine.createSprite('Player Sprite', {
+        width: 1,
+        height: 1,
+        color: 0x4a90d9,
+        position: { x: 0, y: 0 },
+        sortingLayer: 'Default',
+        sortingOrder: 0
+      });
 
-    // Adicionar plano (chão) - rotacionado para ficar horizontal
-    // Floor é travado por padrão (não pode ser selecionado/deletado)
-    engine.createPlane('Floor', {
-      color: 0x808080,
-      position: [0, 0, 0],
-      rotation: [-Math.PI / 2, 0, 0],  // Rotaciona para ficar horizontal
-      width: 20,
-      height: 20,
-      metalness: 0.1,
-      roughness: 0.9,
-      locked: true  // Travado por padrão
-    });
+      // Criar outro sprite para background
+      engine.createSprite('Background', {
+        width: 5,
+        height: 5,
+        color: 0x2a5a8a,
+        position: { x: 0, y: 0 },
+        sortingLayer: 'Background',
+        sortingOrder: 0
+      });
 
-    // Adicionar cilindro padrão
-    engine.createCylinder('Cylinder', {
-      color: 0x4a90d9,
-      position: [0, 1, 0],
-      radiusTop: 0.5,
-      radiusBottom: 0.5,
-      height: 2,
-      metalness: 0.3,
-      roughness: 0.7
-    });
+      // Marcador de inicialização 2D
+      const marker = { name: '__2d_initialized__' };
+      engine.objects.set('__2d_initialized__', marker);
+
+    } else {
+      // ============ CENA 3D ============
+      // Adicionar luzes padrão (com ícone visual e na hierarquia)
+      engine.addAmbientLight('Ambient Light', {
+        color: 0xffffff,
+        intensity: 0.3  // Baixo para permitir mais contraste
+      });
+
+      engine.addDirectionalLight('Directional Light', {
+        color: 0xffffff,
+        intensity: 1.0,  // Alto para sombras mais definidas
+        position: [10, 10, 5],
+        castShadow: true
+      });
+
+      // Adicionar plano (chão) - rotacionado para ficar horizontal
+      // Floor é travado por padrão (não pode ser selecionado/deletado)
+      engine.createPlane('Floor', {
+        color: 0x808080,
+        position: [0, 0, 0],
+        rotation: [-Math.PI / 2, 0, 0],  // Rotaciona para ficar horizontal
+        width: 20,
+        height: 20,
+        metalness: 0.1,
+        roughness: 0.9,
+        locked: true  // Travado por padrão
+      });
+
+      // Adicionar cilindro padrão
+      engine.createCylinder('Cylinder', {
+        color: 0x4a90d9,
+        position: [0, 1, 0],
+        radiusTop: 0.5,
+        radiusBottom: 0.5,
+        height: 2,
+        metalness: 0.3,
+        roughness: 0.7
+      });
+
+      // Adicionar helpers (apenas visíveis em dev mode)
+      engine.addGridHelper('grid', {
+        size: 20,
+        divisions: 20,
+        colorCenterLine: 0xff5555,  // Linha central vermelha
+        colorGrid: 0xaaaaaa         // Grid bem mais clara
+      });
+
+      engine.addAxesHelper('axes', { size: 5 });
+    }
 
     // Atualizar lista de objetos
     refreshObjects();
-
-    // Adicionar helpers (apenas visíveis em dev mode)
-    engine.addGridHelper('grid', {
-      size: 20,
-      divisions: 20,
-      colorCenterLine: 0xff5555,  // Linha central vermelha
-      colorGrid: 0xaaaaaa         // Grid bem mais clara
-    });
-
-    engine.addAxesHelper('axes', { size: 5 });
   }, [isReady, engine, appState]);
 
   const handleSelectObject = (obj, addToSelection = false) => {

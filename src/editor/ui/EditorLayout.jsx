@@ -14,6 +14,7 @@ import './EditorLayout.css';
  * Layout principal do editor estilo Unity
  * Organiza os painéis: Toolbar, Hierarchy, Viewport, Inspector, Project
  * Suporta redimensionamento e esconder/mostrar painéis
+ * Adapta para projetos 2D ou 3D
  */
 export default function EditorLayout({
   engine,
@@ -27,6 +28,8 @@ export default function EditorLayout({
   currentProject,
   onBackToHub
 }) {
+  // Determinar se é projeto 2D
+  const is2D = currentProject?.type === '2d' || engine?.is2D;
   const [mode, setMode] = useState('dev');
   const [activeTool, setActiveTool] = useState('select');
 
@@ -272,6 +275,7 @@ export default function EditorLayout({
         onTogglePanel={mode === 'dev' ? togglePanel : null}
         currentProject={currentProject}
         onBackToHub={onBackToHub}
+        is2D={is2D}
       />
 
       {/* Hierarchy Panel */}
@@ -353,6 +357,7 @@ export default function EditorLayout({
           selectedObject={selectedObject}
           scriptManager={scriptManager}
           onOpenScriptEditor={handleOpenScriptEditor}
+          is2D={is2D}
         />
       )}
 
@@ -373,6 +378,7 @@ export default function EditorLayout({
           minimizedScripts={minimizedScripts}
           onRestoreScript={handleRestoreScript}
           onCloseMinimizedScript={handleCloseMinimizedScript}
+          is2D={is2D}
         />
       )}
 

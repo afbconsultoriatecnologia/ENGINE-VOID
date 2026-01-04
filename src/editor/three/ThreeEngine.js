@@ -18,6 +18,9 @@ import {
 } from '../tools/CommandHistory.js';
 import * as TransformUtils from '../tools/TransformUtils.js';
 import RuntimeEngine from '../../runtime/RuntimeEngine.js';
+import Camera2D from '../../runtime/2d/Camera2D.js';
+import SpriteRenderer from '../../runtime/2d/SpriteRenderer.js';
+import Grid2D from '../../runtime/2d/Grid2D.js';
 
 /**
  * Gera um UID curto (4 caracteres hexadecimais)
@@ -64,6 +67,10 @@ export class ThreeEngine {
     this.selectedObjects = []; // Array de nomes dos objetos selecionados
     this.isAnimating = false;
     this.mode = this.options.mode;
+    this.projectType = options.projectType || '3d'; // '2d' ou '3d'
+    this.is2D = this.projectType === '2d';
+    this.camera2D = null; // Câmera 2D (se projeto 2D)
+    this.grid2D = null; // Grid 2D (se projeto 2D)
     this.onObjectSelected = options.onObjectSelected || null;
     this.onObjectsChanged = options.onObjectsChanged || null;
     this.onTransformChanged = options.onTransformChanged || null;
@@ -160,6 +167,14 @@ export class ThreeEngine {
       this.handleResize();
     });
     this.resizeObserver.observe(this.container);
+
+    // Inicializar modo 2D se projeto for 2D
+    if (this.is2D) {
+      this.init2DMode({
+        width: this.container.clientWidth,
+        height: this.container.clientHeight
+      });
+    }
   }
 
   /**
@@ -605,8 +620,16 @@ export class ThreeEngine {
   handleResize() {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
-    
-    this.cameraController.handleResize(width, height);
+
+    // Redimensionar câmera apropriada
+    if (this.is2D && this.camera2D) {
+      this.camera2D.width = width;
+      this.camera2D.height = height;
+      this.camera2D.updateProjection();
+    } else {
+      this.cameraController.handleResize(width, height);
+    }
+
     this.renderer.setSize(width, height);
   }
 
@@ -617,20 +640,33 @@ export class ThreeEngine {
     if (this.isAnimating) return;
 
     this.isAnimating = true;
+    let lastTime = performance.now();
+
     const animate = () => {
       if (!this.isAnimating) return;
 
       this.animationId = requestAnimationFrame(animate);
 
+      // Calcular delta time
+      const now = performance.now();
+      const deltaTime = (now - lastTime) / 1000;
+      lastTime = now;
+
       // Atualizar controles de câmera APENAS no modo Dev (não no Game mode)
       if (this.mode === 'dev') {
-        this.cameraController.update();
+        if (this.is2D) {
+          // Modo 2D: atualizar Camera2D
+          this.update2D(deltaTime);
+        } else {
+          // Modo 3D: atualizar CameraController
+          this.cameraController.update();
+        }
       }
 
       // Atualizar câmera do selection controller e transform controls APENAS no modo Dev
       if (this.mode === 'dev') {
         if (this.selectionController) {
-          const camera = this.cameraController.getCamera();
+          const camera = this.getActiveCamera();
           this.selectionController.updateCamera(camera);
 
           // Atualizar câmera do TransformControls
@@ -639,15 +675,19 @@ export class ThreeEngine {
           }
         }
 
-        // Atualizar helpers de luz (para acompanhar movimento)
-        this.updateAllLightHelpers();
+        // Atualizar helpers de luz (para acompanhar movimento) - apenas em 3D
+        if (!this.is2D) {
+          this.updateAllLightHelpers();
+        }
       }
 
-      // Animar nuvens se habilitadas
-      this.animateClouds();
+      // Animar nuvens se habilitadas (apenas 3D)
+      if (!this.is2D) {
+        this.animateClouds();
+      }
 
-      // Renderizar
-      const camera = this.cameraController.getCamera();
+      // Renderizar com câmera ativa (2D ou 3D)
+      const camera = this.getActiveCamera();
       this.renderer.render(this.scene, camera);
     };
 
@@ -3358,6 +3398,272 @@ export class ThreeEngine {
     });
   }
 
+  // ========================================
+  // 2D ENGINE METHODS
+  // ========================================
+
+  /**
+   * Inicializa o modo 2D
+   * @param {Object} options - Opções de configuração 2D
+   */
+  init2DMode(options = {}) {
+    const {
+      backgroundColor = 0x1e1e1e,
+      pixelsPerUnit = 16,
+      sortingLayers = ['Background', 'Default', 'Foreground', 'UI']
+    } = options;
+
+    this.is2D = true;
+    this.projectType = '2d';
+    this.pixelsPerUnit = pixelsPerUnit;
+    this.sortingLayers = sortingLayers;
+
+    // Atualizar cor de fundo
+    this.scene.background = new THREE.Color(backgroundColor);
+
+    // Desativar sombras em 2D (não usadas)
+    this.renderer.shadowMap.enabled = false;
+
+    // Criar câmera 2D
+    this.camera2D = new Camera2D({
+      width: this.container.clientWidth,
+      height: this.container.clientHeight,
+      backgroundColor
+    });
+
+    // Criar grid 2D
+    this.grid2D = new Grid2D({
+      size: 100,
+      divisions: 100,
+      primaryInterval: 10
+    });
+    this.scene.add(this.grid2D.getObject());
+
+    // Ativar controles da câmera 2D
+    this.camera2D.enable(this.renderer.domElement);
+
+    // Desativar CameraController 3D
+    if (this.cameraController) {
+      this.cameraController.disable();
+    }
+
+    console.log('[ThreeEngine] 2D mode initialized');
+  }
+
+  /**
+   * Alterna entre modo 2D e 3D
+   * @param {string} projectType - '2d' ou '3d'
+   */
+  setProjectType(projectType) {
+    if (projectType === '2d' && !this.is2D) {
+      this.init2DMode();
+    } else if (projectType === '3d' && this.is2D) {
+      this.disable2DMode();
+    }
+  }
+
+  /**
+   * Desativa modo 2D e volta para 3D
+   */
+  disable2DMode() {
+    this.is2D = false;
+    this.projectType = '3d';
+
+    // Remover grid 2D
+    if (this.grid2D) {
+      this.scene.remove(this.grid2D.getObject());
+      this.grid2D = null;
+    }
+
+    // Desativar câmera 2D
+    if (this.camera2D) {
+      this.camera2D.disable();
+      this.camera2D = null;
+    }
+
+    // Reativar CameraController 3D
+    if (this.cameraController) {
+      this.cameraController.enable();
+    }
+
+    // Restaurar sombras
+    this.renderer.shadowMap.enabled = this.options.enableShadows;
+
+    console.log('[ThreeEngine] 3D mode restored');
+  }
+
+  /**
+   * Cria um sprite 2D
+   * @param {string} name - Nome do sprite
+   * @param {Object} options - Opções do sprite
+   */
+  createSprite(name, options = {}) {
+    // Gerar nome único se necessário
+    let finalName = name;
+    if (this.objects.has(name)) {
+      finalName = `${name}_${generateShortUID()}`;
+    }
+
+    const sprite = SpriteRenderer.createSprite({
+      name: finalName,
+      ...options
+    });
+
+    // Adicionar à cena e ao registro
+    this.scene.add(sprite);
+    this.objects.set(finalName, sprite);
+
+    // Notificar mudanças
+    if (this.onObjectsChanged) {
+      this.onObjectsChanged();
+    }
+
+    return sprite;
+  }
+
+  /**
+   * Atualiza propriedades de um sprite
+   * @param {string} name - Nome do sprite
+   * @param {Object} updates - Propriedades a atualizar
+   */
+  updateSprite(name, updates) {
+    const sprite = this.objects.get(name);
+    if (!sprite || !sprite.userData.is2D) return;
+
+    // Atualizar posição
+    if (updates.position) {
+      sprite.position.x = updates.position.x ?? sprite.position.x;
+      sprite.position.y = updates.position.y ?? sprite.position.y;
+    }
+
+    // Atualizar rotação
+    if (updates.rotation !== undefined) {
+      sprite.rotation.z = updates.rotation * Math.PI / 180;
+    }
+
+    // Atualizar escala
+    if (updates.scale) {
+      const flipX = sprite.userData.flipX ? -1 : 1;
+      const flipY = sprite.userData.flipY ? -1 : 1;
+      sprite.scale.x = (updates.scale.x ?? Math.abs(sprite.scale.x)) * flipX;
+      sprite.scale.y = (updates.scale.y ?? Math.abs(sprite.scale.y)) * flipY;
+    }
+
+    // Atualizar sorting
+    if (updates.sortingLayer || updates.sortingOrder !== undefined) {
+      SpriteRenderer.updateSorting(
+        sprite,
+        updates.sortingLayer ?? sprite.userData.sortingLayer,
+        updates.sortingOrder ?? sprite.userData.sortingOrder
+      );
+    }
+
+    // Atualizar flip
+    if (updates.flipX !== undefined) {
+      SpriteRenderer.setFlipX(sprite, updates.flipX);
+    }
+    if (updates.flipY !== undefined) {
+      SpriteRenderer.setFlipY(sprite, updates.flipY);
+    }
+
+    // Atualizar cor
+    if (updates.color !== undefined) {
+      SpriteRenderer.setColor(sprite, updates.color);
+    }
+
+    // Atualizar opacidade
+    if (updates.opacity !== undefined) {
+      SpriteRenderer.setOpacity(sprite, updates.opacity);
+    }
+  }
+
+  /**
+   * Retorna a câmera ativa (2D ou 3D)
+   */
+  getActiveCamera() {
+    if (this.is2D && this.camera2D) {
+      return this.camera2D.getCamera();
+    }
+    return this.cameraController?.getCamera();
+  }
+
+  /**
+   * Update do modo 2D (chamado no loop de render)
+   */
+  update2D(deltaTime) {
+    if (!this.is2D || !this.camera2D) return;
+
+    this.camera2D.update(deltaTime);
+  }
+
+  /**
+   * Converte posição da tela para mundo 2D
+   */
+  screenToWorld2D(screenX, screenY) {
+    if (!this.camera2D) return { x: 0, y: 0 };
+    return this.camera2D.screenToWorld(screenX, screenY);
+  }
+
+  /**
+   * Converte posição do mundo para tela 2D
+   */
+  worldToScreen2D(worldX, worldY) {
+    if (!this.camera2D) return { x: 0, y: 0 };
+    return this.camera2D.worldToScreen(worldX, worldY);
+  }
+
+  /**
+   * Define zoom da câmera 2D
+   */
+  setZoom2D(zoom) {
+    if (this.camera2D) {
+      this.camera2D.setZoom(zoom);
+    }
+  }
+
+  /**
+   * Retorna zoom atual da câmera 2D
+   */
+  getZoom2D() {
+    return this.camera2D?.getZoom() || 1;
+  }
+
+  /**
+   * Move câmera 2D para posição
+   */
+  moveCameraTo2D(x, y, instant = false) {
+    if (this.camera2D) {
+      this.camera2D.moveTo(x, y, instant);
+    }
+  }
+
+  /**
+   * Define objeto para câmera 2D seguir
+   */
+  setCameraFollow2D(target, offset = { x: 0, y: 0 }) {
+    if (this.camera2D) {
+      this.camera2D.setFollowTarget(target, offset);
+    }
+  }
+
+  /**
+   * Retorna se está em modo 2D
+   */
+  is2DMode() {
+    return this.is2D;
+  }
+
+  /**
+   * Retorna os sorting layers disponíveis
+   */
+  getSortingLayers() {
+    return this.sortingLayers || Object.keys(SpriteRenderer.SORTING_LAYERS);
+  }
+
+  // ========================================
+  // END 2D ENGINE METHODS
+  // ========================================
+
   /**
    * Destrói a engine e limpa todos os recursos
    */
@@ -3386,6 +3692,11 @@ export class ThreeEngine {
       this.scene.remove(this.transformControls);
       this.transformControls.dispose();
       this.transformControls = null;
+    }
+
+    // Limpar Camera2D
+    if (this.camera2D) {
+      this.camera2D.disable();
     }
 
     // Limpar CameraController

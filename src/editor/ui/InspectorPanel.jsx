@@ -21,7 +21,7 @@ function PropertyLabel({ label, tooltip }) {
  * Painel inspetor (direita)
  * Exibe e edita propriedades do objeto selecionado
  */
-export default function InspectorPanel({ engine, selectedObject, scriptManager, onOpenScriptEditor }) {
+export default function InspectorPanel({ engine, selectedObject, scriptManager, onOpenScriptEditor, is2D = false }) {
   const [position, setPosition] = useState({ x: 0, y: 0, z: 0 });
   const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 });
   const [scale, setScale] = useState({ x: 1, y: 1, z: 1 });

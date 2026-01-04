@@ -79,7 +79,7 @@ const fileIcons = {
 /**
  * Primitivos 3D disponíveis
  */
-const primitives = [
+const primitives3D = [
   { type: 'box', icon: '◻', label: 'Box', method: 'createBox' },
   { type: 'sphere', icon: '○', label: 'Sphere', method: 'createSphere' },
   { type: 'cylinder', icon: '◎', label: 'Cylinder', method: 'createCylinder' },
@@ -88,6 +88,16 @@ const primitives = [
   { type: 'torus', icon: '◯', label: 'Torus', method: 'createTorus' },
   { type: 'capsule', icon: '⬭', label: 'Capsule', method: 'createCapsule' },
   { type: 'ring', icon: '◎', label: 'Ring', method: 'createRing' },
+];
+
+/**
+ * Primitivos 2D disponíveis (Sprites)
+ */
+const primitives2D = [
+  { type: 'sprite', icon: '◇', label: 'Sprite', method: 'createSprite' },
+  { type: 'animated-sprite', icon: '◈', label: 'Animated Sprite', method: 'createAnimatedSprite' },
+  { type: 'tile-map', icon: '▦', label: 'Tile Map', method: 'createTileMap' },
+  { type: 'text-2d', icon: 'A', label: 'Text 2D', method: 'createText2D' },
 ];
 
 /**
@@ -104,13 +114,15 @@ const lights = [
 /**
  * Painel de projeto (inferior)
  * Navegador de assets e criação rápida de objetos
+ * Adapta para projetos 2D ou 3D
  */
 export default function ProjectPanel({
   onAddObject,
   engine,
   minimizedScripts = [],
   onRestoreScript,
-  onCloseMinimizedScript
+  onCloseMinimizedScript,
+  is2D = false
 }) {
   const [activeTab, setActiveTab] = useState('assets');
   const [fileSystem, setFileSystem] = useState(initialFileSystem);
@@ -126,11 +138,20 @@ export default function ProjectPanel({
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
   const [hoveredFolder, setHoveredFolder] = useState(null);
 
-  const tabs = [
-    { id: 'assets', label: 'Assets', icon: '📁' },
-    { id: 'primitives', label: 'Primitives', icon: '🧊' },
-    { id: 'lights', label: 'Lights', icon: '💡' },
-  ];
+  // Selecionar primitivas baseado no modo 2D/3D
+  const primitives = is2D ? primitives2D : primitives3D;
+
+  // Tabs adaptam para 2D (não mostra Lights, renomeia Primitives para Sprites)
+  const tabs = is2D
+    ? [
+        { id: 'assets', label: 'Assets', icon: '📁' },
+        { id: 'primitives', label: 'Sprites', icon: '◇' },
+      ]
+    : [
+        { id: 'assets', label: 'Assets', icon: '📁' },
+        { id: 'primitives', label: 'Primitives', icon: '🧊' },
+        { id: 'lights', label: 'Lights', icon: '💡' },
+      ];
 
   // Obter itens do diretório atual
   const getCurrentItems = useCallback(() => {

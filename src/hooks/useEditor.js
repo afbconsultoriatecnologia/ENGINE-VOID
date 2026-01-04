@@ -18,6 +18,9 @@ export function useEditor(options = {}) {
   const [selectedObject, setSelectedObject] = useState(null);
   const [selectedObjects, setSelectedObjects] = useState([]); // Array de nomes
 
+  // Guardar projectType para detectar mudanças
+  const projectTypeRef = useRef(options.projectType || '3d');
+
   // Sincronizar objeto Three.js com EditorState
   const syncObjectToState = useCallback((threeObject) => {
     if (!threeObject) return null;
@@ -57,8 +60,29 @@ export function useEditor(options = {}) {
     threeObjects.forEach(obj => syncObjectToState(obj));
   }, [syncObjectToState]);
 
+  // Efeito para criar/recriar engine quando container ou projectType mudar
   useEffect(() => {
     if (!containerRef.current) return;
+
+    // Verificar se precisa recriar engine (mudança de projectType)
+    const currentProjectType = options.projectType || '3d';
+    const needsRecreate = engineRef.current && projectTypeRef.current !== currentProjectType;
+
+    if (needsRecreate) {
+      console.log(`[useEditor] Recreating engine: ${projectTypeRef.current} -> ${currentProjectType}`);
+      engineRef.current.dispose();
+      engineRef.current = null;
+      setEngine(null);
+      setIsReady(false);
+    }
+
+    // Atualizar ref do projectType
+    projectTypeRef.current = currentProjectType;
+
+    // Se já tem engine válida, não recriar
+    if (engineRef.current) return;
+
+    console.log(`[useEditor] Creating engine with projectType: ${currentProjectType}`);
 
     // Criar engine com callbacks
     engineRef.current = new ThreeEngine(containerRef.current, {
@@ -145,7 +169,7 @@ export function useEditor(options = {}) {
       setEngine(null);
       setIsReady(false);
     };
-  }, [syncSceneToState]);
+  }, [syncSceneToState, options.projectType]);
 
   /**
    * Adiciona um objeto à cena e atualiza a lista

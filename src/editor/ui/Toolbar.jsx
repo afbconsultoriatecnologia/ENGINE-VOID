@@ -21,7 +21,8 @@ export default function Toolbar({
   panelVisibility = { hierarchy: true, inspector: true, project: true },
   onTogglePanel,
   currentProject,
-  onBackToHub
+  onBackToHub,
+  is2D = false
 }) {
   // Estado do ciclo solar
   const [sunCycleActive, setSunCycleActive] = useState(false);
@@ -225,32 +226,36 @@ export default function Toolbar({
         </button>
       </div>
 
-      <div className="toolbar-divider" />
+      {/* Ciclo Solar - apenas para projetos 3D */}
+      {!is2D && (
+        <>
+          <div className="toolbar-divider" />
 
-      {/* Ciclo Solar */}
-      <div className="toolbar-group sun-cycle">
-        <button
-          className={`tool-btn ${sunCycleActive ? 'active' : ''}`}
-          onClick={() => setSunCycleActive(!sunCycleActive)}
-          title={sunCycleActive ? 'Parar ciclo solar' : 'Iniciar ciclo solar'}
-        >
-          {sunCycleActive ? '⏸' : '☀'}
-        </button>
-        {sunCycleActive && (
-          <div className="speed-control">
-            <input
-              type="range"
-              min="0.1"
-              max="5"
-              step="0.1"
-              value={sunSpeed}
-              onChange={(e) => setSunSpeed(parseFloat(e.target.value))}
-              title={`Velocidade: ${sunSpeed.toFixed(1)}x`}
-            />
-            <span className="speed-label">{sunSpeed.toFixed(1)}x</span>
+          <div className="toolbar-group sun-cycle">
+            <button
+              className={`tool-btn ${sunCycleActive ? 'active' : ''}`}
+              onClick={() => setSunCycleActive(!sunCycleActive)}
+              title={sunCycleActive ? 'Parar ciclo solar' : 'Iniciar ciclo solar'}
+            >
+              {sunCycleActive ? '⏸' : '☀'}
+            </button>
+            {sunCycleActive && (
+              <div className="speed-control">
+                <input
+                  type="range"
+                  min="0.1"
+                  max="5"
+                  step="0.1"
+                  value={sunSpeed}
+                  onChange={(e) => setSunSpeed(parseFloat(e.target.value))}
+                  title={`Velocidade: ${sunSpeed.toFixed(1)}x`}
+                />
+                <span className="speed-label">{sunSpeed.toFixed(1)}x</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       <div className="toolbar-divider" />
 
