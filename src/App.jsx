@@ -1,14 +1,20 @@
-import { useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useEditor } from './hooks/useEditor';
+import ProjectHub from './hub/ProjectHub';
 import EditorLayout from './editor/ui/EditorLayout';
 import KeyboardShortcuts from './editor/ui/KeyboardShortcuts';
+import projectManager from './hub/ProjectManager';
 import './App.css';
 
 /**
  * Componente principal da aplicação
- * Gerencia a engine Three.js e a interface de edição estilo Unity
+ * Gerencia o Project Hub e o Editor 3D/2D
  */
 function App() {
+  // Estado do aplicativo: 'hub' ou 'editor'
+  const [appState, setAppState] = useState('hub');
+  const [currentProject, setCurrentProject] = useState(null);
+
   const {
     containerRef,
     engine,
@@ -40,10 +46,45 @@ function App() {
   }, [engine, selectedObjectNames]);
 
   /**
+   * Callback quando um projeto é aberto
+   */
+  const handleProjectOpen = async (project) => {
+    console.log('[App] Opening project:', project.name);
+    setCurrentProject(project);
+    setAppState('editor');
+
+    // Carregar cena do projeto se existir
+    if (engine && project.settings?.defaultScene) {
+      try {
+        const sceneData = await projectManager.loadScene(project.settings.defaultScene);
+        if (sceneData) {
+          console.log('[App] Loading scene:', project.settings.defaultScene);
+          // TODO: Carregar cena no engine
+          // engine.loadScene(sceneData);
+        }
+      } catch (e) {
+        console.warn('[App] Failed to load default scene:', e);
+      }
+    }
+  };
+
+  /**
+   * Callback para voltar ao Hub
+   */
+  const handleBackToHub = () => {
+    setAppState('hub');
+    setCurrentProject(null);
+    // Limpar cena atual
+    if (engine) {
+      engine.clearScene?.();
+    }
+  };
+
+  /**
    * Inicializa a cena com objetos padrão quando a engine estiver pronta
    */
   useEffect(() => {
-    if (!isReady || !engine) return;
+    if (!isReady || !engine || appState !== 'editor') return;
 
     // Verificar se já foi inicializado
     if (engine.objects.has('Cylinder')) {
@@ -102,7 +143,7 @@ function App() {
     });
 
     engine.addAxesHelper('axes', { size: 5 });
-  }, [isReady, engine]);
+  }, [isReady, engine, appState]);
 
   const handleSelectObject = (obj, addToSelection = false) => {
     if (!engine) return;
@@ -146,6 +187,11 @@ function App() {
     }
   };
 
+  // Renderizar Project Hub ou Editor baseado no estado
+  if (appState === 'hub') {
+    return <ProjectHub onProjectOpen={handleProjectOpen} />;
+  }
+
   return (
     <div className="app">
       <EditorLayout
@@ -157,6 +203,8 @@ function App() {
         onAddObject={addObject}
         onRemoveObject={handleRemoveObject}
         onSelectObject={handleSelectObject}
+        currentProject={currentProject}
+        onBackToHub={handleBackToHub}
       />
       <KeyboardShortcuts inputManager={engine?.inputManager} />
     </div>

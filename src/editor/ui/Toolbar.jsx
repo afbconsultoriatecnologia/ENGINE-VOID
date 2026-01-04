@@ -19,7 +19,9 @@ export default function Toolbar({
   canRedo,
   engine,
   panelVisibility = { hierarchy: true, inspector: true, project: true },
-  onTogglePanel
+  onTogglePanel,
+  currentProject,
+  onBackToHub
 }) {
   // Estado do ciclo solar
   const [sunCycleActive, setSunCycleActive] = useState(false);
@@ -141,10 +143,28 @@ export default function Toolbar({
 
   return (
     <div className="toolbar">
-      {/* Logo/Título */}
+      {/* Botão Voltar ao Hub */}
+      {onBackToHub && (
+        <button
+          className="tool-btn back-btn"
+          onClick={onBackToHub}
+          title="Voltar ao Project Hub"
+        >
+          ◀
+        </button>
+      )}
+
+      {/* Logo/Título + Nome do Projeto */}
       <div className="toolbar-brand">
         <span className="brand-icon">◈</span>
         <span className="brand-text">ENGINE VOID</span>
+        {currentProject && (
+          <>
+            <span className="brand-separator">|</span>
+            <span className="project-name">{currentProject.name}</span>
+            <span className="project-type-badge">{currentProject.type?.toUpperCase()}</span>
+          </>
+        )}
       </div>
 
       <div className="toolbar-divider" />

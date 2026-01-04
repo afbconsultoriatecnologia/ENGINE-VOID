@@ -23,7 +23,9 @@ export default function EditorLayout({
   selectedObjects = [],
   onAddObject,
   onRemoveObject,
-  onSelectObject
+  onSelectObject,
+  currentProject,
+  onBackToHub
 }) {
   const [mode, setMode] = useState('dev');
   const [activeTool, setActiveTool] = useState('select');
@@ -268,6 +270,8 @@ export default function EditorLayout({
         engine={engine}
         panelVisibility={panelVisibility}
         onTogglePanel={mode === 'dev' ? togglePanel : null}
+        currentProject={currentProject}
+        onBackToHub={onBackToHub}
       />
 
       {/* Hierarchy Panel */}
