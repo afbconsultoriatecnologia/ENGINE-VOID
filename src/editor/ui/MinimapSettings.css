@@ -1,0 +1,398 @@
+/* Minimap como seção separada do Inspector */
+.minimap-settings {
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.minimap-settings .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-dark);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.minimap-settings .section-header h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.minimap-settings .section-header .section-guide {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: bold;
+  color: var(--text-muted);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: help;
+}
+
+.minimap-settings .section-header .section-guide:hover {
+  color: var(--accent);
+  background: rgba(61, 157, 246, 0.2);
+}
+
+.minimap-settings .toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.minimap-settings .toggle-label input {
+  cursor: pointer;
+}
+
+.minimap-settings .section-content {
+  padding: 4px 8px 6px;
+}
+
+/* Subsections */
+.minimap-settings .subsection {
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.minimap-settings .subsection:last-child {
+  margin-bottom: 0;
+}
+
+.minimap-settings .subsection-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-dark);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.minimap-settings .subsection-header:hover {
+  background: var(--bg-hover);
+}
+
+.minimap-settings .subsection-header .arrow {
+  font-size: 7px;
+  transition: transform 0.15s ease;
+}
+
+.minimap-settings .subsection-header .arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.minimap-settings .subsection-header .toggle-label {
+  margin-left: auto;
+}
+
+.minimap-settings .subsection-content {
+  padding: 6px 8px;
+  background: var(--bg-panel);
+}
+
+/* Property rows - override global InspectorPanel styles */
+.minimap-settings .subsection-content .property-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 6px !important;
+  min-height: 22px;
+  padding: 0 !important;
+}
+
+.minimap-settings .subsection-content .property-row:last-child {
+  margin-bottom: 0 !important;
+}
+
+.minimap-settings .subsection-content .property-row > label {
+  flex: 0 0 auto !important;
+  min-width: 85px !important;
+  font-size: 11px !important;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  line-height: 1;
+  text-transform: none !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+.minimap-settings .subsection-content .property-row select,
+.minimap-settings .subsection-content .property-row input[type="number"] {
+  flex: 1;
+  padding: 4px 6px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 11px;
+  height: 22px;
+}
+
+.minimap-settings .subsection-content .property-row input[type="range"] {
+  flex: 1;
+  height: 3px;
+  cursor: pointer;
+}
+
+.minimap-settings .subsection-content .property-row input[type="color"] {
+  width: 28px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.minimap-settings .subsection-content .value-display {
+  flex: 0 0 40px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Checkbox rows - force horizontal layout */
+.minimap-settings .subsection-content .property-row.checkbox-row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-bottom: 2px !important;
+  min-height: 18px;
+  overflow: visible !important;
+}
+
+.minimap-settings .subsection-content .property-row.checkbox-row > label {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: pointer;
+  font-size: 11px !important;
+  white-space: nowrap !important;
+  color: var(--text) !important;
+  overflow: visible !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+.minimap-settings .subsection-content .property-row.checkbox-row > label > input[type="checkbox"] {
+  cursor: pointer;
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  order: 0;
+}
+
+.minimap-settings .subsection-content .property-row.checkbox-row > label > span.guide-icon {
+  display: inline-flex !important;
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  margin-left: 4px !important;
+  flex-shrink: 0 !important;
+  order: 2;
+  font-size: 8px !important;
+}
+
+/* Força todo o conteúdo do label a ficar em linha */
+.minimap-settings .subsection-content .property-row.checkbox-row > label * {
+  flex-shrink: 0 !important;
+}
+
+/* Texto do checkbox */
+.minimap-settings .subsection-content .checkbox-text {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* World bounds */
+.minimap-settings .subsection-content .world-bounds {
+  margin-top: 4px !important;
+  margin-bottom: 0 !important;
+}
+
+.minimap-settings .subsection-content .world-bounds > label {
+  display: flex;
+  align-items: center;
+  font-size: 11px !important;
+  color: var(--text-muted);
+  margin-bottom: 4px !important;
+  text-transform: none !important;
+}
+
+.minimap-settings .subsection-content .bounds-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.minimap-settings .subsection-content .bound-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.minimap-settings .subsection-content .bound-input span {
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 35px;
+}
+
+.minimap-settings .subsection-content .bound-input input {
+  flex: 1;
+  padding: 3px 4px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 11px;
+  width: 50px;
+  height: 20px;
+}
+
+/* Guide icons (tooltips) */
+.minimap-settings .subsection-content .guide-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 12px !important;
+  height: 12px !important;
+  margin-left: 4px !important;
+  font-size: 8px !important;
+  font-weight: bold;
+  color: var(--text-muted);
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: help;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.minimap-settings .subsection-content .guide-icon:hover {
+  color: var(--accent);
+  background-color: rgba(61, 157, 246, 0.2);
+}
+
+.minimap-settings .subsection-content .guide-icon.small {
+  width: 12px !important;
+  height: 12px !important;
+  font-size: 8px !important;
+  margin-left: 4px !important;
+}
+
+/* Background Image Controls */
+.minimap-settings .background-image-row {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.minimap-settings .image-controls {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.minimap-settings .select-image-btn,
+.minimap-settings .clear-image-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s;
+}
+
+.minimap-settings .select-image-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.minimap-settings .clear-image-btn {
+  color: var(--danger);
+}
+
+.minimap-settings .clear-image-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+.minimap-settings .image-preview-row {
+  padding: 4px 8px;
+  margin-bottom: 6px;
+}
+
+.minimap-settings .image-path {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: monospace;
+  background: var(--bg-dark);
+  padding: 3px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Color input with hex display */
+.minimap-settings .color-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.minimap-settings .color-input input[type="color"] {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+}
+
+.minimap-settings .color-input input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.minimap-settings .color-input input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.minimap-settings .color-hex {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}

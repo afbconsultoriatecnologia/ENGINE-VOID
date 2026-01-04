@@ -1,0 +1,342 @@
+/* HierarchyPanel - Painel de hierarquia de objetos */
+
+.hierarchy-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.hierarchy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hierarchy-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.1s;
+  gap: 8px;
+  position: relative;
+  user-select: none;
+}
+
+.hierarchy-item:hover {
+  background-color: var(--bg-hover);
+}
+
+.hierarchy-item.selected {
+  background-color: var(--bg-selected);
+}
+
+/* Objeto primário (último selecionado, tem o gizmo) */
+.hierarchy-item.primary-selected {
+  background-color: var(--bg-selected);
+  border-left: 2px solid var(--accent);
+}
+
+/* Linha de indentação para filhos */
+.indent-line {
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: var(--border);
+}
+
+.item-icon {
+  font-size: 14px;
+  color: var(--text-muted);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.hierarchy-item.selected .item-icon {
+  color: var(--accent);
+}
+
+.item-name {
+  flex: 1;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Input de renomeação */
+.item-name-input {
+  flex: 1;
+  background-color: var(--bg-input);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  outline: none;
+  min-width: 0;
+}
+
+.item-name-input:focus {
+  box-shadow: 0 0 0 2px rgba(61, 157, 246, 0.3);
+}
+
+/* === Item Controls (visibility, lock, delete) === */
+
+.item-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+  flex-shrink: 0;
+}
+
+.hierarchy-item:hover .item-controls {
+  opacity: 1;
+}
+
+/* Mostrar controles quando item está oculto ou travado */
+.hierarchy-item.is-hidden .item-controls,
+.hierarchy-item.is-locked .item-controls {
+  opacity: 1;
+}
+
+.item-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.item-toggle:hover {
+  background-color: var(--bg-hover);
+  color: var(--text);
+}
+
+/* Toggle desativado (item oculto) */
+.item-toggle.off {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* Toggle ativado (item travado) */
+.item-toggle.on {
+  color: var(--accent);
+}
+
+.item-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.item-delete:hover {
+  background-color: var(--danger);
+  color: white;
+}
+
+/* === Drag and Drop === */
+
+.hierarchy-item.dragging {
+  opacity: 0.5;
+  background-color: var(--bg-hover);
+}
+
+.hierarchy-item.drag-over {
+  position: relative;
+}
+
+/* Indicador de drop antes */
+.hierarchy-item.drag-over-before::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background-color: var(--accent);
+  border-radius: 1px;
+}
+
+/* Indicador de drop depois */
+.hierarchy-item.drag-over-after::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background-color: var(--accent);
+  border-radius: 1px;
+}
+
+/* Indicador de drop dentro (tornar filho) */
+.hierarchy-item.drag-over-inside {
+  background-color: rgba(61, 157, 246, 0.2);
+  border: 1px dashed var(--accent);
+  border-radius: 3px;
+}
+
+/* Estado vazio */
+.hierarchy-empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--text-muted);
+}
+
+.hierarchy-empty p {
+  margin: 4px 0;
+}
+
+.hierarchy-empty .hint {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* Dropdown de adicionar */
+.add-dropdown {
+  position: relative;
+}
+
+.add-dropdown .dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 120px;
+  z-index: 100;
+}
+
+.dropdown-content.show {
+  display: block;
+}
+
+.add-dropdown .dropdown-content button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.add-dropdown .dropdown-content button:hover {
+  background-color: var(--bg-hover);
+}
+
+.add-dropdown .dropdown-content button:first-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.add-dropdown .dropdown-content button:last-child {
+  border-radius: 0 0 4px 4px;
+}
+
+/* Grupo no menu */
+.menu-group {
+  font-weight: 500;
+  color: var(--accent) !important;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 4px 0;
+}
+
+/* Item de grupo na hierarquia */
+.hierarchy-item.is-group {
+  font-weight: 500;
+}
+
+.hierarchy-item.is-group .item-icon {
+  font-size: 12px;
+}
+
+/* === Item oculto === */
+.hierarchy-item.is-hidden {
+  opacity: 0.5;
+}
+
+.hierarchy-item.is-hidden .item-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.hierarchy-item.is-hidden .item-icon {
+  opacity: 0.5;
+}
+
+/* === Item travado === */
+.hierarchy-item.is-locked {
+  background-color: rgba(61, 157, 246, 0.05);
+}
+
+.hierarchy-item.is-locked .item-name {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.hierarchy-item.is-locked .item-icon::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background: var(--accent);
+  bottom: 0;
+  left: 0;
+}
+
+/* Item de luz na hierarquia */
+.hierarchy-item.is-light .item-icon {
+  color: #ffd93d;
+}
+
+.hierarchy-item.is-light .item-name {
+  color: #ffd93d;
+}
+
+.hierarchy-item.is-light:hover .item-icon,
+.hierarchy-item.is-light.selected .item-icon {
+  color: #ffe566;
+}
+
+/* Ícone do botão + */
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: all 0.1s;
+}
+
+.btn-icon:hover {
+  background-color: var(--bg-hover);
+  color: var(--text);
+}

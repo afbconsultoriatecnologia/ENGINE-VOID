@@ -1,0 +1,292 @@
+/* Control Settings - Inspector Section */
+.control-settings {
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.control-settings .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-dark);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.control-settings .section-header h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.control-settings .section-header .section-guide {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: bold;
+  color: var(--text-muted);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: help;
+}
+
+.control-settings .section-header .section-guide:hover {
+  color: var(--accent);
+  background: rgba(61, 157, 246, 0.2);
+}
+
+.control-settings .section-content {
+  padding: 4px 8px 6px;
+}
+
+/* Subsections */
+.control-settings .subsection {
+  margin-bottom: 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.control-settings .subsection:last-child {
+  margin-bottom: 0;
+}
+
+.control-settings .subsection-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-dark);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.control-settings .subsection-header:hover {
+  background: var(--bg-hover);
+}
+
+.control-settings .subsection-header .arrow {
+  font-size: 7px;
+  transition: transform 0.15s ease;
+}
+
+.control-settings .subsection-header .arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.control-settings .subsection-content {
+  padding: 6px 8px;
+  background: var(--bg-panel);
+}
+
+/* Property rows - override InspectorPanel styles */
+.control-settings .subsection-content .property-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 6px !important;
+  min-height: 22px;
+  padding: 0 !important;
+}
+
+.control-settings .subsection-content .property-row:last-child {
+  margin-bottom: 0 !important;
+}
+
+.control-settings .subsection-content .property-row > label {
+  flex: 0 0 auto !important;
+  min-width: 110px !important;
+  font-size: 11px !important;
+  color: var(--text-muted);
+  display: flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  text-transform: none !important;
+  margin: 0 !important;
+  line-height: 1;
+}
+
+.control-settings .subsection-content .property-row input[type="number"] {
+  flex: 1 !important;
+  max-width: 70px;
+  padding: 4px 6px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 11px;
+  height: 22px;
+}
+
+.control-settings .subsection-content .property-row input[type="range"] {
+  flex: 1 !important;
+  height: 3px;
+  cursor: pointer;
+}
+
+.control-settings .subsection-content .value-display {
+  flex: 0 0 40px !important;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Checkbox rows - force horizontal layout */
+.control-settings .subsection-content .property-row.checkbox-row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-bottom: 4px !important;
+  min-height: 18px;
+}
+
+.control-settings .subsection-content .property-row.checkbox-row > label {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: pointer;
+  font-size: 11px !important;
+  color: var(--text) !important;
+  white-space: nowrap !important;
+  min-width: auto !important;
+}
+
+.control-settings .subsection-content .property-row.checkbox-row input[type="checkbox"] {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  flex-shrink: 0 !important;
+  cursor: pointer;
+  margin: 0 !important;
+}
+
+.control-settings .subsection-content .checkbox-text {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* Guide icon */
+.control-settings .guide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  margin-left: 4px;
+  font-size: 8px;
+  font-weight: bold;
+  color: var(--text-muted);
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: help;
+}
+
+.control-settings .guide-icon:hover {
+  color: var(--accent);
+  background-color: rgba(61, 157, 246, 0.2);
+}
+
+/* Keybind Grid */
+.control-settings .keybind-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-settings .keybind-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-settings .keybind-label {
+  flex: 0 0 70px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.control-settings .keybind-input {
+  flex: 1;
+  min-width: 60px;
+  max-width: 80px;
+  padding: 4px 8px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 10px;
+  font-family: monospace;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.control-settings .keybind-input:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.control-settings .keybind-input.capturing {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+  animation: pulse 0.5s ease infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 1; }
+  to { opacity: 0.7; }
+}
+
+.control-settings .keybind-hint {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Reset Button */
+.control-settings .reset-controls {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: center;
+}
+
+.control-settings .reset-btn {
+  padding: 4px 12px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.control-settings .reset-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}

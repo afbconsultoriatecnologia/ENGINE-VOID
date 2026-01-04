@@ -1,0 +1,196 @@
+.script-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+
+/* Toolbar */
+.script-editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #252526;
+  border-bottom: 1px solid #3d3d3d;
+  flex-shrink: 0;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.script-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.unsaved-dot {
+  color: #f0ad4e;
+  margin-left: 4px;
+}
+
+.script-language {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: #3d3d3d;
+  border-radius: 3px;
+  color: #808080;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-count {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(241, 76, 76, 0.2);
+  color: #f14c4c;
+  border-radius: 4px;
+}
+
+.script-editor-toolbar button {
+  padding: 5px 12px;
+  background: #3d3d3d;
+  border: 1px solid #4d4d4d;
+  border-radius: 4px;
+  color: #d4d4d4;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.script-editor-toolbar button:hover {
+  background: #4d4d4d;
+}
+
+.script-editor-toolbar button.primary {
+  background: #0e639c;
+  border-color: #1177bb;
+}
+
+.script-editor-toolbar button.primary:hover {
+  background: #1177bb;
+}
+
+.script-editor-toolbar button.minimize-btn,
+.script-editor-toolbar button.maximize-btn,
+.script-editor-toolbar button.close-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.script-editor-toolbar button.minimize-btn:hover {
+  background: #f0ad4e;
+  border-color: #f0ad4e;
+  color: #1e1e1e;
+}
+
+.script-editor-toolbar button.maximize-btn:hover {
+  background: #4ec9b0;
+  border-color: #4ec9b0;
+  color: #1e1e1e;
+}
+
+.script-editor-toolbar button.close-btn:hover {
+  background: #f14c4c;
+  border-color: #f14c4c;
+  color: white;
+}
+
+/* Editor content */
+.script-editor-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Error panel */
+.script-editor-errors {
+  flex-shrink: 0;
+  max-height: 150px;
+  background: #1e1e1e;
+  border-top: 1px solid #3d3d3d;
+}
+
+.errors-header {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f14c4c;
+  background: rgba(241, 76, 76, 0.1);
+  border-bottom: 1px solid #3d3d3d;
+}
+
+.errors-list {
+  max-height: 110px;
+  overflow-y: auto;
+}
+
+.error-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.error-item:hover {
+  background: rgba(241, 76, 76, 0.1);
+}
+
+.error-icon {
+  color: #f14c4c;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.error-line {
+  color: #808080;
+  flex-shrink: 0;
+}
+
+.error-message {
+  color: #f14c4c;
+  flex: 1;
+}
+
+/* Monaco overrides */
+.script-editor .monaco-editor {
+  padding-top: 8px;
+}
+
+.script-editor .monaco-editor .margin {
+  background: #1e1e1e !important;
+}
+
+/* Scrollbar */
+.errors-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.errors-list::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.errors-list::-webkit-scrollbar-thumb {
+  background: #3d3d3d;
+  border-radius: 4px;
+}
+
+.errors-list::-webkit-scrollbar-thumb:hover {
+  background: #4d4d4d;
+}

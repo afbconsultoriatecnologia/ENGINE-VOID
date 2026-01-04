@@ -1,0 +1,361 @@
+.script-inspector {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  position: relative;
+}
+
+/* Header */
+.script-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.script-header h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.add-script-btn {
+  width: 24px;
+  height: 24px;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-script-btn:hover {
+  background: #2a8bd4;
+}
+
+/* Menu de adicionar */
+.add-script-menu {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 220px;
+  max-height: 300px;
+  overflow: hidden;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.menu-header {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.script-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.script-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.script-option:hover {
+  background: var(--bg-hover);
+}
+
+.script-option .script-name {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.script-option .script-source {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.menu-footer {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.create-new-btn {
+  width: 100%;
+  padding: 8px;
+  background: var(--bg-hover);
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.create-new-btn:hover {
+  background: var(--bg-selected);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* Input para novo script */
+.new-script-input {
+  display: flex;
+  gap: 4px;
+}
+
+.new-script-input input {
+  flex: 1;
+  padding: 6px 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  outline: none;
+}
+
+.new-script-input input::placeholder {
+  color: var(--text-muted);
+}
+
+.new-script-input .confirm-btn,
+.new-script-input .cancel-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.new-script-input .confirm-btn {
+  background: var(--accent);
+  color: white;
+}
+
+.new-script-input .confirm-btn:hover {
+  background: #2a8bd4;
+}
+
+.new-script-input .cancel-btn {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.new-script-input .cancel-btn:hover {
+  background: var(--danger);
+  color: white;
+}
+
+/* Scripts anexados */
+.attached-scripts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.no-scripts {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11px;
+  background: var(--bg-dark);
+  border-radius: 4px;
+  border: 1px dashed var(--border);
+}
+
+/* Script item */
+.script-item {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.script-item.has-error {
+  border-color: var(--danger);
+}
+
+.script-item-header {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  gap: 6px;
+  background: var(--bg-panel);
+}
+
+.expand-btn {
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+}
+
+.script-item-header .script-name {
+  flex: 1;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.error-badge {
+  width: 16px;
+  height: 16px;
+  background: var(--danger);
+  border-radius: 50%;
+  color: white;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.script-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.script-actions button {
+  width: 22px;
+  height: 22px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.script-actions button:hover {
+  background: var(--bg-selected);
+  color: var(--text);
+}
+
+.remove-btn:hover {
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+  color: white !important;
+}
+
+/* Properties */
+.script-properties {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.no-properties {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+}
+
+.script-error {
+  color: var(--danger);
+  font-size: 11px;
+  padding: 8px;
+  background: rgba(241, 76, 76, 0.1);
+  border-radius: 4px;
+}
+
+/* Scoped property rows for script properties */
+.script-inspector .script-property-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.script-inspector .script-property-row:last-child {
+  margin-bottom: 0;
+}
+
+.script-inspector .script-property-row label {
+  width: 80px;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
+.script-inspector .script-property-row input[type="text"],
+.script-inspector .script-property-row input[type="number"] {
+  flex: 1;
+  padding: 4px 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.script-inspector .script-property-row input[type="text"]:focus,
+.script-inspector .script-property-row input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.script-inspector .script-property-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.script-inspector .script-property-row input[type="color"] {
+  width: 60px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.script-inspector .vector3-input {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.script-inspector .vector3-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  text-align: center;
+}
+
+.script-inspector .vector3-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}

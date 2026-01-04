@@ -1,0 +1,494 @@
+/* InspectorPanel - Painel de propriedades */
+
+.inspector-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.inspector-empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--text-muted);
+}
+
+.inspector-section {
+  border-bottom: 1px solid var(--border);
+}
+
+.inspector-section .section-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.2);
+  gap: 8px;
+}
+
+.inspector-section .section-header h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+.inspector-section .section-content {
+  padding: 8px 12px;
+}
+
+/* Nome do objeto */
+.object-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.name-icon {
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.name-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Linhas de propriedade */
+.property-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.property-row:last-child {
+  margin-bottom: 0;
+}
+
+.property-row > label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Inputs de vetor (X, Y, Z) */
+.vector-inputs {
+  display: flex;
+  gap: 4px;
+}
+
+.vector-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.vector-input .axis {
+  padding: 4px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.05);
+  min-width: 20px;
+  text-align: center;
+}
+
+.vector-input .axis.x { color: #f44336; }
+.vector-input .axis.y { color: #4caf50; }
+.vector-input .axis.z { color: #2196f3; }
+
+.vector-input input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 4px 6px;
+  font-size: 11px;
+  width: 100%;
+  min-width: 0;
+}
+
+.vector-input input:focus {
+  outline: none;
+}
+
+.vector-input:focus-within {
+  border-color: var(--accent);
+}
+
+/* Input de cor */
+.color-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-input input[type="color"] {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  background: none;
+}
+
+.color-input input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.color-input input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.color-hex {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+/* Slider input (range + number) */
+.slider-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slider-input input[type="range"] {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.slider-input input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-input input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.slider-input input[type="number"] {
+  width: 50px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  padding: 4px 6px;
+  font-size: 11px;
+  text-align: center;
+}
+
+.slider-input input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Select input */
+.select-input {
+  width: 100%;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.select-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.select-input option {
+  background-color: var(--bg-panel);
+  color: var(--text);
+}
+
+/* Checkbox group */
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Hint text */
+.inspector-empty .hint {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 8px;
+}
+
+/* Guide icons */
+.guide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  cursor: help;
+  transition: all 0.15s;
+}
+
+.guide-icon:hover {
+  color: var(--accent);
+  background-color: rgba(61, 157, 246, 0.2);
+}
+
+.guide-icon.small {
+  width: 12px;
+  height: 12px;
+  font-size: 8px;
+  margin-left: 4px;
+}
+
+/* Section guide icon */
+.section-guide {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  cursor: help;
+  transition: all 0.15s;
+}
+
+.section-guide:hover {
+  color: var(--accent);
+  background-color: rgba(61, 157, 246, 0.2);
+}
+
+/* Property label with guide */
+.property-label {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Transform Settings Row */
+.transform-settings-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toggle-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text);
+}
+
+.toggle-btn.active {
+  background-color: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* Snap Settings */
+.snap-settings {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 6px 8px;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.snap-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.snap-input input {
+  width: 40px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  padding: 2px 4px;
+  font-size: 10px;
+  text-align: center;
+}
+
+.snap-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Transform Actions */
+.transform-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  min-width: 40px;
+}
+
+.action-group button {
+  padding: 3px 6px;
+  font-size: 10px;
+  color: var(--text);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.action-group button:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent);
+}
+
+.action-group button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-group button:disabled:hover {
+  background-color: var(--bg-input);
+  border-color: var(--border);
+}
+
+/* Multi-select Actions (Align/Distribute) */
+.multi-select-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  background-color: rgba(61, 157, 246, 0.1);
+  border: 1px solid rgba(61, 157, 246, 0.2);
+  border-radius: 4px;
+}
+
+.multi-select-actions .action-group button {
+  min-width: 24px;
+  padding: 4px 6px;
+}
+
+.multi-select-actions .action-label {
+  min-width: 50px;
+}
+
+/* Game Properties */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.checkbox-label span {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.property-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.property-info {
+  padding: 6px 8px;
+  margin-top: 4px;
+  background-color: rgba(61, 157, 246, 0.1);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.property-info small {
+  font-size: 11px;
+}

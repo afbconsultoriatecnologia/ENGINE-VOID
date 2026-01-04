@@ -1,0 +1,104 @@
+/* TransformOverlay - Overlay estilo Blender para transformações */
+
+.transform-overlay {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(30, 30, 30, 0.95);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  min-width: 200px;
+}
+
+.transform-mode {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mode-icon {
+  font-size: 24px;
+  color: var(--accent);
+}
+
+.mode-label {
+  color: var(--text);
+}
+
+.axis-label {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 2px solid;
+  font-weight: 700;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+.numeric-input {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background-color: var(--bg-dark);
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--accent);
+}
+
+.input-value {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 80px;
+  text-align: right;
+}
+
+.input-unit {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.transform-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.transform-hint span {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.object-name {
+  font-size: 12px;
+  color: var(--accent-green);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* Animação de entrada */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.transform-overlay {
+  animation: slideUp 0.15s ease-out;
+}
