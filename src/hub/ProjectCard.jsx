@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * ProjectCard - Card de projeto para o Project Hub
  */
-export default function ProjectCard({ project, onOpen, onDelete, isRecent = false }) {
+export default function ProjectCard({ project, onOpen, onRequestDelete, isRecent = false }) {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -22,11 +22,11 @@ export default function ProjectCard({ project, onOpen, onDelete, isRecent = fals
     return type === '2d' ? '2D' : '3D';
   };
 
-  const handleDelete = (e) => {
+  const handleDeleteClick = (e) => {
     e.stopPropagation();
-    if (window.confirm(`Tem certeza que deseja deletar o projeto "${project.name}"?\n\nEsta ação não pode ser desfeita.`)) {
-      onDelete(project.path || project.folderName);
-    }
+    e.preventDefault();
+    // Solicitar confirmação ao componente pai
+    onRequestDelete(project);
   };
 
   return (
@@ -79,7 +79,7 @@ export default function ProjectCard({ project, onOpen, onDelete, isRecent = fals
         </button>
         <button
           className="action-btn delete-btn"
-          onClick={handleDelete}
+          onClick={handleDeleteClick}
           title="Deletar Projeto"
         >
           🗑

@@ -21,9 +21,31 @@ export function useEditor(options = {}) {
   // Guardar projectType para detectar mudanças
   const projectTypeRef = useRef(options.projectType || '3d');
 
+  // Estado para detectar quando container está disponível
+  const [containerReady, setContainerReady] = useState(false);
+
+  // Verificar periodicamente se o container está disponível
+  // e resetar quando não está
+  useEffect(() => {
+    if (containerRef.current && !containerReady) {
+      setContainerReady(true);
+    } else if (!containerRef.current && containerReady) {
+      // Container não está mais disponível (voltou para Hub)
+      setContainerReady(false);
+    }
+  });
+
+  // Reset containerReady quando desmonta
+  useEffect(() => {
+    return () => setContainerReady(false);
+  }, []);
+
   // Sincronizar objeto Three.js com EditorState
   const syncObjectToState = useCallback((threeObject) => {
-    if (!threeObject) return null;
+    // Skip if not a valid Three.js object (e.g., markers)
+    if (!threeObject || !threeObject.position || !threeObject.rotation || !threeObject.scale) {
+      return null;
+    }
 
     const entityData = {
       name: threeObject.name,
@@ -169,7 +191,7 @@ export function useEditor(options = {}) {
       setEngine(null);
       setIsReady(false);
     };
-  }, [syncSceneToState, options.projectType]);
+  }, [syncSceneToState, options.projectType, containerReady]);
 
   /**
    * Adiciona um objeto à cena e atualiza a lista

@@ -7,6 +7,7 @@ import './TransformOverlay.css';
  */
 export default function TransformOverlay({ engine }) {
   const [transformState, setTransformState] = useState(null);
+  const is2D = engine?.is2D || false;
 
   useEffect(() => {
     if (!engine?.selectionController) return;
@@ -93,10 +94,22 @@ export default function TransformOverlay({ engine }) {
       )}
 
       <div className="transform-hint">
-        <span>X Y Z</span> para eixo |
-        <span> Shift+X Y Z</span> para plano |
-        <span> Enter</span> confirmar |
-        <span> Esc</span> cancelar
+        {is2D ? (
+          // Modo 2D: apenas X e Y para movimento/escala, nada para rotação
+          transformState.mode === 'rotate' ? (
+            <><span>Enter</span> confirmar | <span>Esc</span> cancelar</>
+          ) : (
+            <><span>X Y</span> para eixo | <span>Enter</span> confirmar | <span>Esc</span> cancelar</>
+          )
+        ) : (
+          // Modo 3D: todos os eixos e planos
+          <>
+            <span>X Y Z</span> para eixo |
+            <span> Shift+X Y Z</span> para plano |
+            <span> Enter</span> confirmar |
+            <span> Esc</span> cancelar
+          </>
+        )}
       </div>
 
       <div className="object-name">

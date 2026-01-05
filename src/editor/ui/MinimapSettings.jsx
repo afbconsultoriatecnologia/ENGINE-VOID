@@ -513,68 +513,107 @@ export default function MinimapSettings({ object, onChange }) {
             )}
           </div>
 
-          {/* MARCADORES */}
+          {/* OBJETOS */}
           <div className="subsection">
             <div
               className="subsection-header"
               onClick={() => toggleSection('markers')}
             >
               <span className={`arrow ${expandedSections.markers ? 'expanded' : ''}`}>▶</span>
-              Markers
+              Objetos
             </div>
             {expandedSections.markers && (
               <div className="subsection-content">
-                <div className="property-row checkbox-row">
-                  <label title="Exibe objetos com tag 'enemy' no minimap (triângulos)">
-                    <input
-                      type="checkbox"
-                      checked={settings.showEnemies}
-                      onChange={(e) => handleChange('showEnemies', e.target.checked)}
-                    />
-                    <span className="checkbox-text">Show Enemies</span>
-                    <span className="guide-icon small">?</span>
-                  </label>
-                  <input
-                    type="color"
-                    value={settings.markerColors?.enemy || '#ff0000'}
-                    onChange={(e) => handleChange('markerColors.enemy', e.target.value)}
-                    style={{ width: '30px', marginLeft: 'auto' }}
+                {/* Modo de Exibição */}
+                <div className="property-row">
+                  <PropertyLabel
+                    label="Modo"
+                    tooltip="Marcadores = símbolos simples | Sprites = mini versões dos objetos | Estático = apenas imagem de fundo"
                   />
+                  <select
+                    value={settings.displayMode || 'markers'}
+                    onChange={(e) => handleChange('displayMode', e.target.value)}
+                    className="select-input"
+                  >
+                    <option value="markers">Marcadores</option>
+                    <option value="sprites">Mini Sprites</option>
+                    <option value="static">Estático</option>
+                  </select>
                 </div>
-                <div className="property-row checkbox-row">
-                  <label title="Exibe objetos com tag 'item' no minimap (quadrados)">
-                    <input
-                      type="checkbox"
-                      checked={settings.showItems}
-                      onChange={(e) => handleChange('showItems', e.target.checked)}
-                    />
-                    <span className="checkbox-text">Show Items</span>
-                    <span className="guide-icon small">?</span>
-                  </label>
-                  <input
-                    type="color"
-                    value={settings.markerColors?.item || '#ffff00'}
-                    onChange={(e) => handleChange('markerColors.item', e.target.value)}
-                    style={{ width: '30px', marginLeft: 'auto' }}
-                  />
-                </div>
-                <div className="property-row checkbox-row">
-                  <label title="Exibe objetos com tag 'waypoint' no minimap (losangos)">
-                    <input
-                      type="checkbox"
-                      checked={settings.showWaypoints}
-                      onChange={(e) => handleChange('showWaypoints', e.target.checked)}
-                    />
-                    <span className="checkbox-text">Show Waypoints</span>
-                    <span className="guide-icon small">?</span>
-                  </label>
-                  <input
-                    type="color"
-                    value={settings.markerColors?.waypoint || '#00ffff'}
-                    onChange={(e) => handleChange('markerColors.waypoint', e.target.value)}
-                    style={{ width: '30px', marginLeft: 'auto' }}
-                  />
-                </div>
+
+                {/* Opções de objetos (apenas para markers e sprites) */}
+                {settings.displayMode !== 'static' && (
+                  <>
+                    <div className="property-row checkbox-row">
+                      <label title="Exibe plataformas e objetos estáticos no minimap">
+                        <input
+                          type="checkbox"
+                          checked={settings.showPlatforms !== false}
+                          onChange={(e) => handleChange('showPlatforms', e.target.checked)}
+                        />
+                        <span className="checkbox-text">Plataformas</span>
+                        <span className="guide-icon small">?</span>
+                      </label>
+                      <input
+                        type="color"
+                        value={settings.markerColors?.platform || '#666666'}
+                        onChange={(e) => handleChange('markerColors.platform', e.target.value)}
+                        style={{ width: '30px', marginLeft: 'auto' }}
+                      />
+                    </div>
+                    <div className="property-row checkbox-row">
+                      <label title="Exibe objetos com tag 'enemy' no minimap (triângulos)">
+                        <input
+                          type="checkbox"
+                          checked={settings.showEnemies}
+                          onChange={(e) => handleChange('showEnemies', e.target.checked)}
+                        />
+                        <span className="checkbox-text">Inimigos</span>
+                        <span className="guide-icon small">?</span>
+                      </label>
+                      <input
+                        type="color"
+                        value={settings.markerColors?.enemy || '#ff4444'}
+                        onChange={(e) => handleChange('markerColors.enemy', e.target.value)}
+                        style={{ width: '30px', marginLeft: 'auto' }}
+                      />
+                    </div>
+                    <div className="property-row checkbox-row">
+                      <label title="Exibe objetos com tag 'item' no minimap (quadrados)">
+                        <input
+                          type="checkbox"
+                          checked={settings.showItems}
+                          onChange={(e) => handleChange('showItems', e.target.checked)}
+                        />
+                        <span className="checkbox-text">Itens</span>
+                        <span className="guide-icon small">?</span>
+                      </label>
+                      <input
+                        type="color"
+                        value={settings.markerColors?.item || '#ffdd00'}
+                        onChange={(e) => handleChange('markerColors.item', e.target.value)}
+                        style={{ width: '30px', marginLeft: 'auto' }}
+                      />
+                    </div>
+                    <div className="property-row checkbox-row">
+                      <label title="Exibe objetos com tag 'waypoint' no minimap (losangos)">
+                        <input
+                          type="checkbox"
+                          checked={settings.showWaypoints}
+                          onChange={(e) => handleChange('showWaypoints', e.target.checked)}
+                        />
+                        <span className="checkbox-text">Waypoints</span>
+                        <span className="guide-icon small">?</span>
+                      </label>
+                      <input
+                        type="color"
+                        value={settings.markerColors?.waypoint || '#00ffff'}
+                        onChange={(e) => handleChange('markerColors.waypoint', e.target.value)}
+                        style={{ width: '30px', marginLeft: 'auto' }}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

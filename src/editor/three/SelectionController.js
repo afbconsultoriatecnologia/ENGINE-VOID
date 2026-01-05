@@ -361,6 +361,22 @@ export class SelectionController {
   setAxisConstraint(axis) {
     if (!this.transformMode) return;
 
+    const is2D = this.engine?.is2D || false;
+
+    // Em modo 2D:
+    // - Rotação não usa restrição de eixo (sempre Z)
+    // - Movimento e escala só permitem X e Y
+    if (is2D) {
+      if (this.transformMode === 'rotate') {
+        // Rotação 2D não tem restrição de eixo
+        return;
+      }
+      if (axis === 'z') {
+        // Não permite eixo Z em modo 2D para grab/scale
+        return;
+      }
+    }
+
     // Toggle: se já está no mesmo eixo, remove a restrição
     if (this.axisConstraint === axis) {
       this.axisConstraint = null;
@@ -378,6 +394,10 @@ export class SelectionController {
    */
   setPlaneConstraint(excludeAxis) {
     if (!this.transformMode) return;
+
+    // Em modo 2D, não usa restrição de plano (movimento já é 2D)
+    const is2D = this.engine?.is2D || false;
+    if (is2D) return;
 
     const planes = { x: 'yz', y: 'xz', z: 'xy' };
 
@@ -446,16 +466,24 @@ export class SelectionController {
   _applyNumericGrab(value) {
     const pos = this.transformStartPosition.clone();
 
+    // Em modo 2D, movimento é no plano XY
+    const is2D = this.engine?.is2D || false;
+
     if (this.axisConstraint === 'x') {
       pos.x += value;
     } else if (this.axisConstraint === 'y') {
       pos.y += value;
-    } else if (this.axisConstraint === 'z') {
+    } else if (this.axisConstraint === 'z' && !is2D) {
+      // Só permite movimento em Z no modo 3D
       pos.z += value;
     } else {
-      // Sem restrição: move em todos os eixos igualmente
+      // Sem restrição: move em X e Y (2D) ou X e Z (3D)
       pos.x += value;
-      pos.z += value;
+      if (is2D) {
+        pos.y += value;
+      } else {
+        pos.z += value;
+      }
     }
 
     this.selectedObject.position.copy(pos);
@@ -465,7 +493,13 @@ export class SelectionController {
     const rot = this.transformStartRotation.clone();
     const radians = THREE.MathUtils.degToRad(value);
 
-    if (this.axisConstraint === 'x') {
+    // Em modo 2D, rotação é apenas no eixo Z
+    const is2D = this.engine?.is2D || false;
+
+    if (is2D) {
+      // Modo 2D: apenas rotação em Z
+      rot.z += radians;
+    } else if (this.axisConstraint === 'x') {
       rot.x += radians;
     } else if (this.axisConstraint === 'y' || !this.axisConstraint) {
       rot.y += radians;
@@ -480,19 +514,23 @@ export class SelectionController {
     const scale = this.transformStartScale.clone();
     const factor = value;
 
+    // Em modo 2D, escala só afeta X e Y
+    const is2D = this.engine?.is2D || false;
+
     if (this.axisConstraint === 'x') {
       scale.x = this.transformStartScale.x * factor;
     } else if (this.axisConstraint === 'y') {
       scale.y = this.transformStartScale.y * factor;
-    } else if (this.axisConstraint === 'z') {
+    } else if (this.axisConstraint === 'z' && !is2D) {
+      // Só permite escala em Z no modo 3D
       scale.z = this.transformStartScale.z * factor;
     } else {
-      // Escala uniforme
-      scale.set(
-        this.transformStartScale.x * factor,
-        this.transformStartScale.y * factor,
-        this.transformStartScale.z * factor
-      );
+      // Escala uniforme (2D: apenas X e Y, 3D: todos)
+      scale.x = this.transformStartScale.x * factor;
+      scale.y = this.transformStartScale.y * factor;
+      if (!is2D) {
+        scale.z = this.transformStartScale.z * factor;
+      }
     }
 
     // Mínimo de 0.01
@@ -529,6 +567,9 @@ export class SelectionController {
   _applyMouseGrab(deltaX, deltaY) {
     const speed = 5;
 
+    // Em modo 2D, movimento é no plano XY
+    const is2D = this.engine?.is2D || false;
+
     if (this.axisConstraint) {
       // Movimento restrito a um eixo
       // Cada eixo usa o movimento do mouse mais intuitivo
@@ -539,16 +580,16 @@ export class SelectionController {
         pos.x += deltaX * speed;
       } else if (this.axisConstraint === 'y') {
         // Y: movimento vertical do mouse (cima = +Y)
-        pos.y += deltaY * speed;
-      } else if (this.axisConstraint === 'z') {
-        // Z: movimento vertical (cima = +Z) ou horizontal (direita = +Z)
+        pos.y -= deltaY * speed;
+      } else if (this.axisConstraint === 'z' && !is2D) {
+        // Z: movimento vertical (cima = +Z) ou horizontal (direita = +Z) - apenas 3D
         const delta = Math.abs(deltaY) > Math.abs(deltaX) ? -deltaY : deltaX;
         pos.z += delta * speed;
       }
 
       this.selectedObject.position.copy(pos);
-    } else if (this.planeConstraint) {
-      // Movimento em um plano
+    } else if (this.planeConstraint && !is2D) {
+      // Movimento em um plano (apenas 3D)
       const pos = this.transformStartPosition.clone();
 
       if (this.planeConstraint === 'xy') {
@@ -563,8 +604,20 @@ export class SelectionController {
       }
 
       this.selectedObject.position.copy(pos);
+    } else if (is2D) {
+      // Modo 2D: movimento livre no plano XY
+      const pos = this.transformStartPosition.clone();
+      pos.x += deltaX * speed;
+      pos.y -= deltaY * speed;
+
+      if (this.coordinateSystem && this.coordinateSystem.config.enableSnap) {
+        const snapped = this.coordinateSystem.snapPosition(pos.x, pos.y, pos.z);
+        this.selectedObject.position.set(snapped.x, snapped.y, snapped.z);
+      } else {
+        this.selectedObject.position.copy(pos);
+      }
     } else {
-      // Movimento livre no plano XZ (padrão)
+      // Modo 3D: Movimento livre no plano XZ (padrão)
       this.raycaster.setFromCamera(this.mouse, this.camera);
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.transformStartPosition.y);
       const intersection = new THREE.Vector3();
@@ -584,7 +637,13 @@ export class SelectionController {
     const speed = 3;
     const rot = this.transformStartRotation.clone();
 
-    if (this.axisConstraint === 'x') {
+    // Em modo 2D, rotação é apenas no eixo Z
+    const is2D = this.engine?.is2D || false;
+
+    if (is2D) {
+      // Modo 2D: apenas rotação em Z
+      rot.z -= deltaX * speed;
+    } else if (this.axisConstraint === 'x') {
       // Rotação em X: mouse vertical (cima = rotação positiva)
       rot.x -= deltaY * speed;
     } else if (this.axisConstraint === 'y') {
@@ -607,20 +666,24 @@ export class SelectionController {
     const factor = 1 + (deltaX + deltaY) * speed;
     const scale = this.transformStartScale.clone();
 
+    // Em modo 2D, escala só afeta X e Y
+    const is2D = this.engine?.is2D || false;
+
     if (this.axisConstraint === 'x') {
       scale.x = Math.max(0.01, this.transformStartScale.x * factor);
     } else if (this.axisConstraint === 'y') {
       scale.y = Math.max(0.01, this.transformStartScale.y * factor);
-    } else if (this.axisConstraint === 'z') {
+    } else if (this.axisConstraint === 'z' && !is2D) {
+      // Só permite escala em Z no modo 3D
       scale.z = Math.max(0.01, this.transformStartScale.z * factor);
     } else {
-      // Escala uniforme
+      // Escala uniforme (2D: apenas X e Y, 3D: todos)
       const f = Math.max(0.01, factor);
-      scale.set(
-        this.transformStartScale.x * f,
-        this.transformStartScale.y * f,
-        this.transformStartScale.z * f
-      );
+      scale.x = this.transformStartScale.x * f;
+      scale.y = this.transformStartScale.y * f;
+      if (!is2D) {
+        scale.z = this.transformStartScale.z * f;
+      }
     }
 
     this.selectedObject.scale.copy(scale);

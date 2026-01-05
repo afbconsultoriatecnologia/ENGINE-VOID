@@ -66,11 +66,13 @@ export class ThreeEngine {
     this.selectedObject = null;
     this.selectedObjects = []; // Array de nomes dos objetos selecionados
     this.isAnimating = false;
-    this.mode = this.options.mode;
+    this.mode = this.options.mode || 'dev'; // Default to 'dev' mode
     this.projectType = options.projectType || '3d'; // '2d' ou '3d'
     this.is2D = this.projectType === '2d';
     this.camera2D = null; // Câmera 2D (se projeto 2D)
     this.grid2D = null; // Grid 2D (se projeto 2D)
+    this._isDisposed = false; // Flag para prevenir double disposal
+    this._boundHandleResize = this.handleResize.bind(this); // Bound reference para cleanup
     this.onObjectSelected = options.onObjectSelected || null;
     this.onObjectsChanged = options.onObjectsChanged || null;
     this.onTransformChanged = options.onTransformChanged || null;
@@ -159,12 +161,20 @@ export class ThreeEngine {
       this.commandHistory.onChange(this.onHistoryChange);
     }
 
-    // Adicionar listener de resize
-    window.addEventListener('resize', () => this.handleResize());
+    // Adicionar listener de resize (usando bound reference para cleanup)
+    window.addEventListener('resize', this._boundHandleResize);
 
     // Usar ResizeObserver para detectar mudanças no container
     this.resizeObserver = new ResizeObserver(() => {
-      this.handleResize();
+      // Envolver em try-catch para evitar erros durante dispose/unmount
+      try {
+        if (!this._isDisposed && this.container) {
+          this.handleResize();
+        }
+      } catch (e) {
+        // Ignorar erros durante resize (pode acontecer durante unmount)
+        console.warn('[ThreeEngine] ResizeObserver error ignored:', e.message);
+      }
     });
     this.resizeObserver.observe(this.container);
 
@@ -354,13 +364,63 @@ export class ThreeEngine {
    * @param {THREE.Object3D} object
    */
   attachTransformControls(object) {
+    console.log('[ThreeEngine] attachTransformControls called', {
+      hasTransformControls: !!this.transformControls,
+      object: object?.name,
+      objectType: object?.userData?.type,
+      locked: object?.userData?.locked,
+      is2D: this.is2D,
+      mode: this.mode
+    });
+
+    // Só anexar gizmo no modo 'dev'
+    if (this.mode !== 'dev') {
+      console.log('[ThreeEngine] Not in dev mode, skipping gizmo attachment');
+      return;
+    }
+
     if (this.transformControls && object) {
       // Não anexar gizmo a objetos travados
       if (object.userData?.locked) {
+        console.log('[ThreeEngine] Object is locked, detaching gizmo');
         this.transformControls.detach();
         return;
       }
+
+      // Garantir que o TransformControls usa a câmera correta
+      const camera = this.getActiveCamera();
+      if (camera && this.transformControls.camera !== camera) {
+        console.log('[ThreeEngine] Updating TransformControls camera to:', camera?.type);
+        this.transformControls.camera = camera;
+      }
+
+      // Garantir que o TransformControls está visível e habilitado
+      this.transformControls.visible = true;
+      this.transformControls.enabled = true;
+
+      // Em modo 2D, ajustar configurações para funcionar melhor
+      if (this.is2D) {
+        // Aumentar tamanho dos gizmos para melhor visibilidade
+        this.transformControls.setSize(1.5);
+        // Garantir que gizmos renderizem na frente (alto renderOrder)
+        this.transformControls.traverse((child) => {
+          if (child.material) {
+            child.renderOrder = 9999;
+            child.material.depthTest = false;
+            child.material.depthWrite = false;
+          }
+        });
+        // Em 2D, restringir ao plano XY (desabilitar eixo Z)
+        this.transformControls.showZ = false;
+      } else {
+        this.transformControls.setSize(0.75);
+        this.transformControls.showZ = true;
+      }
+
       this.transformControls.attach(object);
+      console.log('[ThreeEngine] TransformControls attached to:', object.name, 'visible:', this.transformControls.visible, 'is2D:', this.is2D);
+    } else {
+      console.warn('[ThreeEngine] Cannot attach TransformControls - missing controls or object');
     }
   }
 
@@ -456,24 +516,29 @@ export class ThreeEngine {
     });
 
     // ==================== Atalhos tipo Blender ====================
+    // NOTA: Estes atalhos só funcionam no modo 'dev' (editor)
 
     // G = Grab (Mover)
     this.inputManager.registerShortcut('keyg', () => {
+      if (this.mode !== 'dev') return; // Ignorar no Game mode
       this.selectionController?.startTransformMode('grab');
     });
 
     // R = Rotate (Rotacionar)
     this.inputManager.registerShortcut('keyr', () => {
+      if (this.mode !== 'dev') return; // Ignorar no Game mode
       this.selectionController?.startTransformMode('rotate');
     });
 
     // S = Scale (Escalar)
     this.inputManager.registerShortcut('keys', () => {
+      if (this.mode !== 'dev') return; // Ignorar no Game mode
       this.selectionController?.startTransformMode('scale');
     });
 
     // Q = Voltar ao modo de seleção (cancelar transformação)
     this.inputManager.registerShortcut('keyq', () => {
+      if (this.mode !== 'dev') return; // Ignorar no Game mode
       if (this.selectionController?.getTransformMode()) {
         this.selectionController.cancelTransform();
       }
@@ -618,19 +683,45 @@ export class ThreeEngine {
    * Lida com o redimensionamento da janela
    */
   handleResize() {
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
+    // Log para debug - remover após resolver o problema
+    // console.log('[ThreeEngine] handleResize called, container:', !!this.container, 'disposed:', this._isDisposed);
 
-    // Redimensionar câmera apropriada
-    if (this.is2D && this.camera2D) {
-      this.camera2D.width = width;
-      this.camera2D.height = height;
-      this.camera2D.updateProjection();
-    } else {
-      this.cameraController.handleResize(width, height);
+    // Envolver em try-catch para evitar erros durante dispose/unmount
+    try {
+      // Verificações de segurança para evitar erros quando o container não existe
+      if (!this.container || this._isDisposed) return;
+
+      // Verificar se container ainda está no DOM
+      if (!document.body.contains(this.container)) return;
+
+      // Verificação extra - acessar clientWidth de forma segura
+      const container = this.container;
+      if (!container || typeof container.clientWidth !== 'number') return;
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      // Skip resize if dimensions are invalid
+      if (!width || !height || width <= 0 || height <= 0) {
+        return;
+      }
+
+      // Redimensionar câmera apropriada
+      if (this.is2D && this.camera2D) {
+        this.camera2D.width = width;
+        this.camera2D.height = height;
+        this.camera2D.updateProjection();
+      } else if (this.cameraController) {
+        this.cameraController.handleResize(width, height);
+      }
+
+      if (this.renderer) {
+        this.renderer.setSize(width, height);
+      }
+    } catch (e) {
+      // Ignorar erros durante resize (pode acontecer durante unmount)
+      console.warn('[ThreeEngine] handleResize error ignored:', e.message);
     }
-
-    this.renderer.setSize(width, height);
   }
 
   /**
@@ -652,15 +743,18 @@ export class ThreeEngine {
       const deltaTime = (now - lastTime) / 1000;
       lastTime = now;
 
-      // Atualizar controles de câmera APENAS no modo Dev (não no Game mode)
+      // Atualizar controles de câmera
       if (this.mode === 'dev') {
         if (this.is2D) {
-          // Modo 2D: atualizar Camera2D
+          // Modo 2D Dev: atualizar Camera2D (pan/zoom controls)
           this.update2D(deltaTime);
         } else {
-          // Modo 3D: atualizar CameraController
+          // Modo 3D Dev: atualizar CameraController (orbit)
           this.cameraController.update();
         }
+      } else if (this.mode === 'game' && this.is2D) {
+        // Modo 2D Game: atualizar Camera2D para follow e zoom
+        this.update2D(deltaTime);
       }
 
       // Atualizar câmera do selection controller e transform controls APENAS no modo Dev
@@ -2646,6 +2740,8 @@ export class ThreeEngine {
    * @param {string[]} names - Array de nomes dos objetos
    */
   selectObjects(names) {
+    console.log('[ThreeEngine] selectObjects called with:', names);
+
     // Remover highlight de objetos anteriormente selecionados
     if (this.selectedObjects) {
       for (const name of this.selectedObjects) {
@@ -2660,6 +2756,8 @@ export class ThreeEngine {
     this.selectedObjects = names.filter(n => n && this.objects.has(n));
     this.selectedObject = this.selectedObjects.length > 0 ? this.selectedObjects[this.selectedObjects.length - 1] : null;
 
+    console.log('[ThreeEngine] After filter - selectedObject:', this.selectedObject, 'exists in objects:', this.objects.has(this.selectedObject));
+
     // Destacar todos os objetos selecionados
     for (const name of this.selectedObjects) {
       const obj = this.objects.get(name);
@@ -2671,6 +2769,7 @@ export class ThreeEngine {
     // Anexar gizmo ao objeto primário (último selecionado)
     if (this.selectedObject) {
       const obj = this.objects.get(this.selectedObject);
+      console.log('[ThreeEngine] Attaching transform controls to:', this.selectedObject, 'obj:', obj?.name, 'is2D:', obj?.userData?.is2D);
       if (obj) {
         this.attachTransformControls(obj);
 
@@ -2684,6 +2783,17 @@ export class ThreeEngine {
       }
     } else {
       this.detachTransformControls();
+    }
+
+    // IMPORTANTE: Notificar callback para atualizar React state (Inspector, etc.)
+    if (this.onObjectSelected) {
+      this.onObjectSelected(this.selectedObject, this.selectedObjects);
+    }
+
+    // Atualizar Camera2D com objeto selecionado (para atalho F)
+    if (this.camera2D) {
+      const selectedObj = this.selectedObject ? this.objects.get(this.selectedObject) : null;
+      this.camera2D.setSelectedObject(selectedObj);
     }
   }
 
@@ -2731,8 +2841,20 @@ export class ThreeEngine {
           child.userData.originalMaterial = child.material;
         }
         const highlightMaterial = child.material.clone();
-        highlightMaterial.emissive = new THREE.Color(0x00ff00);
-        highlightMaterial.emissiveIntensity = 0.3;
+
+        // Só aplicar emissive se o material suportar (não é MeshBasicMaterial)
+        if (highlightMaterial.emissive !== undefined) {
+          highlightMaterial.emissive = new THREE.Color(0x00ff00);
+          highlightMaterial.emissiveIntensity = 0.3;
+        } else {
+          // Para MeshBasicMaterial (sprites 2D), usar cor mais clara
+          if (highlightMaterial.color) {
+            const originalColor = highlightMaterial.color.clone();
+            highlightMaterial.color.lerp(new THREE.Color(0x00ff00), 0.3);
+            highlightMaterial._originalHighlightColor = originalColor;
+          }
+        }
+
         child.material = highlightMaterial;
       }
     });
@@ -2909,6 +3031,11 @@ export class ThreeEngine {
         helper.visible = mode === 'dev';
       }
     });
+
+    // Mostrar/ocultar Grid 2D baseado no modo
+    if (this.grid2D) {
+      this.grid2D.setVisible(mode === 'dev');
+    }
 
     // Gerenciar RuntimeEngine (já criado no init)
     if (mode === 'game' && previousMode === 'dev') {
@@ -3297,12 +3424,16 @@ export class ThreeEngine {
       obj.visible = data.visible !== false;
     }
 
-    // Restaurar userData.locked se existia
-    if (obj && data.userData?.locked) {
-      obj.userData.locked = true;
+    // Restaurar TODO o userData (inclui controlSettings, isPlayer, cameraMode, minimapSettings, etc.)
+    if (obj && data.userData) {
+      // Mesclar userData salvo com o existente (preservar type e outros metadados criados)
+      obj.userData = {
+        ...obj.userData,
+        ...data.userData
+      };
     }
 
-    // Restaurar scripts anexados ao objeto
+    // Restaurar scripts anexados ao objeto (campos que vêm fora do userData por compatibilidade)
     if (obj && data.scripts && data.scripts.length > 0) {
       obj.userData.scripts = [...data.scripts];
     }
@@ -3441,13 +3572,19 @@ export class ThreeEngine {
 
     // Ativar controles da câmera 2D
     this.camera2D.enable(this.renderer.domElement);
+    this.camera2D.setScene(this.scene); // Para atalho F (focus on player)
 
     // Desativar CameraController 3D
     if (this.cameraController) {
       this.cameraController.disable();
     }
 
-    console.log('[ThreeEngine] 2D mode initialized');
+    console.log('[ThreeEngine] 2D mode initialized', {
+      containerSize: { width: this.container.clientWidth, height: this.container.clientHeight },
+      cameraPosition: this.camera2D?.camera?.position,
+      sceneChildren: this.scene.children.length,
+      backgroundColor: backgroundColor.toString(16)
+    });
   }
 
   /**
@@ -3668,28 +3805,52 @@ export class ThreeEngine {
    * Destrói a engine e limpa todos os recursos
    */
   dispose() {
+    // Prevenir double disposal
+    if (this._isDisposed) {
+      console.log('[ThreeEngine] Engine already disposed, skipping...');
+      return;
+    }
+    this._isDisposed = true;
+
+    console.log('[ThreeEngine] Disposing engine...');
+
+    // IMPORTANTE: Limpar ResizeObserver PRIMEIRO para evitar callbacks durante dispose
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
+    // Remover resize listener usando a mesma referência bound
+    if (this._boundHandleResize) {
+      window.removeEventListener('resize', this._boundHandleResize);
+      this._boundHandleResize = null;
+    }
+
     this.stop();
     this.clear();
 
     // Limpar histórico de comandos
     if (this.commandHistory) {
       this.commandHistory.dispose();
+      this.commandHistory = null;
     }
 
     // Limpar InputManager
     if (this.inputManager) {
       this.inputManager.dispose();
+      this.inputManager = null;
     }
 
     // Limpar SelectionController
     if (this.selectionController) {
       this.selectionController.dispose();
+      this.selectionController = null;
     }
 
     // Limpar TransformControls
     if (this.transformControls) {
       this.transformControls.detach();
-      this.scene.remove(this.transformControls);
+      if (this.scene) this.scene.remove(this.transformControls);
       this.transformControls.dispose();
       this.transformControls = null;
     }
@@ -3697,27 +3858,82 @@ export class ThreeEngine {
     // Limpar Camera2D
     if (this.camera2D) {
       this.camera2D.disable();
+      this.camera2D = null;
     }
 
     // Limpar CameraController
     if (this.cameraController) {
       this.cameraController.dispose();
+      this.cameraController = null;
     }
 
-    // Limpar renderer
-    if (this.renderer) {
-      this.renderer.dispose();
-      if (this.container && this.renderer.domElement) {
-        this.container.removeChild(this.renderer.domElement);
+    // Limpar sky
+    if (this.sky) {
+      if (this.scene) this.scene.remove(this.sky);
+      this.sky = null;
+    }
+
+    // Limpar clouds
+    if (this.clouds) {
+      if (this.scene) this.scene.remove(this.clouds);
+      this.clouds.geometry?.dispose();
+      this.clouds.material?.dispose();
+      this.clouds = null;
+    }
+
+    // Limpar todos os objetos da cena restantes
+    if (this.scene) {
+      this.scene.traverse((object) => {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => {
+              if (m.map) m.map.dispose();
+              if (m.normalMap) m.normalMap.dispose();
+              if (m.roughnessMap) m.roughnessMap.dispose();
+              if (m.metalnessMap) m.metalnessMap.dispose();
+              m.dispose();
+            });
+          } else {
+            if (object.material.map) object.material.map.dispose();
+            if (object.material.normalMap) object.material.normalMap.dispose();
+            if (object.material.roughnessMap) object.material.roughnessMap.dispose();
+            if (object.material.metalnessMap) object.material.metalnessMap.dispose();
+            object.material.dispose();
+          }
+        }
+      });
+      // Limpar filhos da cena
+      while (this.scene.children.length > 0) {
+        this.scene.remove(this.scene.children[0]);
       }
     }
 
-    // Limpar ResizeObserver
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
+    // Limpar renderer - IMPORTANTE: forceContextLoss para liberar WebGL context
+    if (this.renderer) {
+      // Remover DOM element primeiro
+      if (this.container && this.renderer.domElement) {
+        this.container.removeChild(this.renderer.domElement);
+      }
+
+      // Forçar perda do contexto WebGL para liberar recursos
+      this.renderer.forceContextLoss();
+      this.renderer.dispose();
+      this.renderer = null;
+      console.log('[ThreeEngine] WebGL context released');
     }
 
-    window.removeEventListener('resize', () => this.handleResize());
+    // Limpar referências
+    this.scene = null;
+    this.camera = null;
+    this.container = null;
+    this.objects.clear();
+    this.lights.clear();
+    this.helpers.clear();
+
+    console.log('[ThreeEngine] Engine disposed successfully');
   }
 }
 

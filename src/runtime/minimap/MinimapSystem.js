@@ -1,16 +1,20 @@
 /**
  * MinimapSystem - Sistema principal do minimap
  * Gerencia posição do player, objetos marcados e integração com fog of war
+ * Suporta modo 2D (X/Y) e 3D (X/Z)
  */
 export default class MinimapSystem {
-  constructor(scene, player, settings) {
+  constructor(scene, player, settings, is2D = false) {
     this.scene = scene;
     this.player = player;
     this.settings = this.mergeWithDefaults(settings);
+    this.is2D = is2D; // Flag para modo 2D
 
     // Posição atual do player no mundo
     this.playerPosition = { x: 0, z: 0 };
+    this.lastPlayerPosition = { x: 0, z: 0 }; // Para calcular direção do movimento
     this.playerRotation = 0; // Ângulo em radianos
+    this.movementDirection = 0; // Direção do movimento (para 2D)
     this.cameraAngle = 0; // Ângulo da câmera (para rotação do minimap)
 
     // Objetos marcados no mapa (enemies, items, waypoints)
@@ -26,10 +30,14 @@ export default class MinimapSystem {
     this.taggedObjects = {
       enemy: [],
       item: [],
-      waypoint: []
+      waypoint: [],
+      platform: [],
+      ground: [],
+      obstacle: []
     };
 
     this.updateTaggedObjects();
+    console.log('[MinimapSystem] Initialized', { is2D, taggedObjects: this.taggedObjects });
   }
 
   /**
@@ -82,17 +90,35 @@ export default class MinimapSystem {
       playerSize: 8,
       showPlayerDirection: true,
 
+      // Modo de exibição dos objetos
+      // 'markers' = pontos/símbolos simples (padrão)
+      // 'sprites' = mini versões dos sprites
+      // 'static' = apenas imagem de fundo, sem objetos
+      displayMode: 'markers',
+
       // Objetos no mapa
       showEnemies: true,
       showItems: true,
       showWaypoints: true,
+      showPlatforms: true, // Mostrar plataformas/obstáculos
       customMarkers: [],
 
-      // Cores dos marcadores
+      // Cores dos marcadores (modo 'markers')
       markerColors: {
-        enemy: '#ff0000',
-        item: '#ffff00',
-        waypoint: '#00ffff'
+        enemy: '#ff4444',
+        item: '#ffdd00',
+        waypoint: '#00ffff',
+        platform: '#888888',  // Cinza mais claro para melhor visibilidade
+        obstacle: '#aaaaaa'   // Cinza claro para obstacles
+      },
+
+      // Tamanhos dos marcadores
+      markerSizes: {
+        enemy: 6,
+        item: 5,
+        waypoint: 4,
+        platform: 4,   // Aumentado de 3 para 4
+        obstacle: 5    // Tamanho para obstacles
       }
     };
   }
@@ -159,53 +185,93 @@ export default class MinimapSystem {
     this.taggedObjects = {
       enemy: [],
       item: [],
-      waypoint: []
+      waypoint: [],
+      platform: [],
+      ground: [],
+      obstacle: []
     };
 
+    let objectCount = 0;
+    const allObjects = [];
+
     this.scene.traverse((child) => {
+      // Ignorar objetos internos do Three.js
+      if (!child.name || child.type === 'Scene' || child.type === 'AmbientLight' ||
+          child.type === 'DirectionalLight' || child.type === 'PointLight') {
+        return;
+      }
+
+      // Coletar info para debug
+      allObjects.push({
+        name: child.name,
+        type: child.type,
+        isPlayer: child === this.player,
+        tag: child.userData?.tag,
+        isStatic: child.userData?.isStatic,
+        is2D: child.userData?.is2D,
+        position: child.position ? { x: child.position.x.toFixed(2), y: child.position.y.toFixed(2) } : null
+      });
+
+      // Ignorar o player
+      if (child === this.player) return;
+
       const tag = child.userData?.tag;
-      if (tag && this.taggedObjects[tag]) {
+      if (tag && this.taggedObjects[tag] !== undefined) {
         this.taggedObjects[tag].push(child);
+        objectCount++;
+      }
+
+      // Também adicionar objetos estáticos como plataformas
+      if (child.userData?.isStatic && !tag) {
+        this.taggedObjects.platform.push(child);
+        objectCount++;
       }
     });
+
+    // Log apenas contagens (sem lista completa)
+    if (objectCount > 0) {
+      console.log('[MinimapSystem] Tagged objects:', {
+        enemy: this.taggedObjects.enemy.length,
+        item: this.taggedObjects.item.length,
+        platform: this.taggedObjects.platform.length,
+        obstacle: this.taggedObjects.obstacle.length
+      });
+    }
   }
 
   /**
    * Converte coordenadas do mundo para coordenadas do minimap (0-1)
+   * IMPORTANTE: O player está sempre no centro (0.5, 0.5)
+   * Tudo mais é posicionado relativo ao player
    */
   worldToMinimap(worldX, worldZ) {
+    // Calcular raio de visão baseado no worldBounds e scale
     const bounds = this.settings.worldBounds;
     const worldWidth = bounds.maxX - bounds.minX;
     const worldHeight = bounds.maxZ - bounds.minZ;
+    const scale = this.settings.scale || 1;
 
-    // Normalizar para 0-1
-    const normalizedX = (worldX - bounds.minX) / worldWidth;
-    const normalizedZ = (worldZ - bounds.minZ) / worldHeight;
+    // Raio de visão = metade do mundo dividido pela escala
+    // Com scale=1, vemos metade do mundo em cada direção do player
+    // Com scale=2, vemos 1/4 do mundo em cada direção (mais zoom)
+    const viewRadiusX = (worldWidth / 2) / scale;
+    const viewRadiusZ = (worldHeight / 2) / scale;
 
-    // Debug log uma vez
-    if (!this._debugWorldToMinimap) {
-      console.log('[MinimapSystem] worldToMinimap:', {
-        input: { worldX, worldZ },
-        bounds,
-        normalized: { normalizedX, normalizedZ },
-        scale: this.settings.scale
-      });
-      this._debugWorldToMinimap = true;
-    }
+    // Offset do objeto em relação ao player
+    const offsetX = worldX - this.playerPosition.x;
+    const offsetZ = worldZ - this.playerPosition.z;
 
-    // Aplicar escala
-    const scale = this.settings.scale;
+    // Converter para coordenadas do minimap (0-1)
+    // Player está no centro (0.5, 0.5)
+    // Objetos são posicionados pelo offset dividido pelo raio de visão
+    // NOTA: Y do canvas é invertido (0 = topo), então usamos MENOS para o eixo vertical
+    const mapX = 0.5 + (offsetX / viewRadiusX) * 0.5;
+    const mapY = 0.5 - (offsetZ / viewRadiusZ) * 0.5;  // INVERTIDO: objeto acima = mapY menor
 
-    // Escalar ao redor do centro do player
-    const playerNormX = (this.playerPosition.x - bounds.minX) / worldWidth;
-    const playerNormZ = (this.playerPosition.z - bounds.minZ) / worldHeight;
-
-    const scaledX = playerNormX + (normalizedX - playerNormX) / scale;
-    const scaledZ = playerNormZ + (normalizedZ - playerNormZ) / scale;
 
     return {
-      x: Math.max(0, Math.min(1, scaledX)),
-      y: Math.max(0, Math.min(1, scaledZ))
+      x: mapX,
+      y: mapY
     };
   }
 
@@ -229,12 +295,32 @@ export default class MinimapSystem {
   update(deltaTime) {
     if (!this.player || !this.settings.enabled) return;
 
-    // Atualizar posição do player
-    this.playerPosition.x = this.player.position.x;
-    this.playerPosition.z = this.player.position.z;
+    // Salvar posição anterior para calcular direção do movimento
+    this.lastPlayerPosition.x = this.playerPosition.x;
+    this.lastPlayerPosition.z = this.playerPosition.z;
 
-    // Atualizar rotação do player (Y rotation)
-    this.playerRotation = this.player.rotation.y;
+    // Atualizar posição do player
+    // Em 2D: usa X e Y, em 3D: usa X e Z
+    this.playerPosition.x = this.player.position.x;
+    this.playerPosition.z = this.is2D ? this.player.position.y : this.player.position.z;
+
+    // Calcular direção do movimento (para 2D)
+    if (this.is2D) {
+      const dx = this.playerPosition.x - this.lastPlayerPosition.x;
+      const dy = this.playerPosition.z - this.lastPlayerPosition.z; // z armazena Y em 2D
+
+      // Só atualizar direção se estiver se movendo
+      if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+        // atan2(y, x) retorna ângulo onde:
+        // 0 = direita (X+), PI/2 = cima (Y+), PI/-PI = esquerda, -PI/2 = baixo
+        this.movementDirection = Math.atan2(dy, dx);
+      }
+      // Usar direção do movimento em vez da rotação do sprite
+      this.playerRotation = this.movementDirection;
+    } else {
+      // Em 3D: usa rotation.y (rotação no plano XZ)
+      this.playerRotation = this.player.rotation.y;
+    }
 
     // Atualizar fog of war se existir
     if (this.fogManager && this.settings.fogOfWar.enabled) {
@@ -250,10 +336,26 @@ export default class MinimapSystem {
   }
 
   /**
+   * Obtém a coordenada Z/Y dependendo do modo 2D/3D
+   */
+  getObjectZ(obj) {
+    return this.is2D ? obj.position.y : obj.position.z;
+  }
+
+  /**
    * Atualiza lista de marcadores visíveis
    */
   updateMarkers() {
     this.markers = [];
+
+    // Se modo static, não adicionar marcadores de objetos
+    if (this.settings.displayMode === 'static') {
+      return;
+    }
+
+    const sizes = this.settings.markerSizes || {};
+    const colors = this.settings.markerColors || {};
+
 
     // Adicionar marcadores customizados
     if (this.settings.customMarkers) {
@@ -269,17 +371,53 @@ export default class MinimapSystem {
       }
     }
 
+    // Adicionar plataformas/ground/obstacle primeiro (ficam atrás)
+    if (this.settings.showPlatforms) {
+      const platforms = [
+        ...this.taggedObjects.platform,
+        ...this.taggedObjects.ground,
+        ...this.taggedObjects.obstacle
+      ];
+
+
+      for (const platform of platforms) {
+        const posZ = this.getObjectZ(platform);
+        const tag = platform.userData?.tag || 'platform';
+        // Usar cor/tamanho específico para obstacles
+        const markerColor = tag === 'obstacle'
+          ? (colors.obstacle || '#aaaaaa')
+          : (colors.platform || '#888888');
+        const markerSize = tag === 'obstacle'
+          ? (sizes.obstacle || 5)
+          : (sizes.platform || 4);
+
+        this.markers.push({
+          type: tag === 'obstacle' ? 'obstacle' : 'platform',
+          x: platform.position.x,
+          z: posZ,
+          color: markerColor,
+          size: markerSize,
+          object: platform,
+          // Informações extras para modo sprites
+          scale: platform.scale ? { x: platform.scale.x, y: platform.scale.y } : { x: 1, y: 1 },
+          spriteColor: platform.userData?.color || platform.material?.color
+        });
+      }
+    }
+
     // Adicionar inimigos
     if (this.settings.showEnemies) {
       for (const enemy of this.taggedObjects.enemy) {
-        if (this.isVisible(enemy.position.x, enemy.position.z)) {
+        const posZ = this.getObjectZ(enemy);
+        if (this.isVisible(enemy.position.x, posZ)) {
           this.markers.push({
             type: 'enemy',
             x: enemy.position.x,
-            z: enemy.position.z,
-            color: this.settings.markerColors.enemy,
-            size: 6,
-            object: enemy
+            z: posZ,
+            color: colors.enemy || '#ff4444',
+            size: sizes.enemy || 6,
+            object: enemy,
+            spriteColor: enemy.userData?.color || enemy.material?.color
           });
         }
       }
@@ -288,14 +426,16 @@ export default class MinimapSystem {
     // Adicionar itens
     if (this.settings.showItems) {
       for (const item of this.taggedObjects.item) {
-        if (this.isVisible(item.position.x, item.position.z)) {
+        const posZ = this.getObjectZ(item);
+        if (this.isVisible(item.position.x, posZ)) {
           this.markers.push({
             type: 'item',
             x: item.position.x,
-            z: item.position.z,
-            color: this.settings.markerColors.item,
-            size: 5,
-            object: item
+            z: posZ,
+            color: colors.item || '#ffdd00',
+            size: sizes.item || 5,
+            object: item,
+            spriteColor: item.userData?.color || item.material?.color
           });
         }
       }
@@ -304,14 +444,15 @@ export default class MinimapSystem {
     // Adicionar waypoints
     if (this.settings.showWaypoints) {
       for (const wp of this.taggedObjects.waypoint) {
+        const posZ = this.getObjectZ(wp);
         // Waypoints sempre visíveis se explorados
-        if (this.isExplored(wp.position.x, wp.position.z)) {
+        if (this.isExplored(wp.position.x, posZ)) {
           this.markers.push({
             type: 'waypoint',
             x: wp.position.x,
-            z: wp.position.z,
-            color: this.settings.markerColors.waypoint,
-            size: 7,
+            z: posZ,
+            color: colors.waypoint || '#00ffff',
+            size: sizes.waypoint || 4,
             object: wp
           });
         }
@@ -389,7 +530,7 @@ export default class MinimapSystem {
    */
   dispose() {
     this.markers = [];
-    this.taggedObjects = { enemy: [], item: [], waypoint: [] };
+    this.taggedObjects = { enemy: [], item: [], waypoint: [], platform: [], ground: [], obstacle: [] };
     this.fogManager = null;
     this.renderer = null;
   }

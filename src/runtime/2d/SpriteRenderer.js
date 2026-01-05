@@ -14,12 +14,15 @@ import * as THREE from 'three';
 export default class SpriteRenderer {
   /**
    * Sorting layers padrão
+   * IMPORTANTE: Valores devem estar dentro do range visível da câmera (Z=100, near=0.1, far=1000)
+   * Range visível: Z=-900 até Z=99.9
+   * Usando valores pequenos para garantir visibilidade
    */
   static SORTING_LAYERS = {
-    'Background': -100,
+    'Background': -10,
     'Default': 0,
-    'Foreground': 100,
-    'UI': 200
+    'Foreground': 10,
+    'UI': 20
   };
 
   /**
@@ -40,7 +43,8 @@ export default class SpriteRenderer {
       sortingLayer = 'Default',
       sortingOrder = 0,
       opacity = 1,
-      pixelsPerUnit = 16
+      pixelsPerUnit = 16,
+      userData = {} // Preservar userData adicional (tag, isStatic, isPlayer, etc.)
     } = options;
 
     // Criar geometria do sprite (plano)
@@ -91,8 +95,9 @@ export default class SpriteRenderer {
       1
     );
 
-    // Metadados
+    // Metadados - preservar userData adicional (tag, isStatic, isPlayer, etc.)
     sprite.userData = {
+      ...userData, // Primeiro, adicionar userData extra passado nas opções
       type: 'sprite',
       is2D: true,
       sortingLayer: sortingLayer,

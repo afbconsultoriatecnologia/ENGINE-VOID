@@ -1,6 +1,7 @@
 import GameLoop from './GameLoop';
 import PlayerController from './PlayerController';
 import CharacterController from './CharacterController';
+import Character2DController from './Character2DController';
 import ClickToMoveController from './ClickToMoveController';
 import ThirdPersonCamera from './ThirdPersonCamera';
 import { ScriptManager } from './scripting';
@@ -20,6 +21,7 @@ export default class RuntimeEngine {
     this.gameLoop = new GameLoop();
     this.playerController = null;      // Primeira pessoa
     this.characterController = null;   // Terceira pessoa WASD (move o personagem)
+    this.character2DController = null; // Controle 2D (move o personagem em X/Y)
     this.clickToMoveController = null; // Terceira pessoa Click to Move
     this.cameraController = null;      // Terceira pessoa (câmera que segue)
 
@@ -132,6 +134,10 @@ export default class RuntimeEngine {
     // Desativar OrbitControls do editor
     this.threeEngine.cameraController.disable();
 
+    // Detectar se é projeto 2D
+    const is2D = this.threeEngine.is2D;
+    console.log('[RuntimeEngine] Is 2D:', is2D);
+
     if (this.playerObject) {
       // Salvar posição original do player
       this.originalPlayerPosition = this.playerObject.position.clone();
@@ -139,7 +145,11 @@ export default class RuntimeEngine {
       const cameraMode = this.playerObject.userData?.cameraMode || 'isometric';
       console.log('[RuntimeEngine] Camera Mode:', cameraMode, 'isFirstPerson:', this.isFirstPerson);
 
-      if (cameraMode === 'firstPerson') {
+      if (is2D) {
+        // === MODO 2D ===
+        console.log('[RuntimeEngine] Setting up 2D Mode');
+        this.setup2DMode(container);
+      } else if (cameraMode === 'firstPerson') {
         // === PRIMEIRA PESSOA ===
         console.log('[RuntimeEngine] Setting up First Person');
         this.setupFirstPerson(editorCamera, container);
@@ -238,6 +248,69 @@ export default class RuntimeEngine {
   }
 
   /**
+   * Configura modo 2D (top-down ou platformer)
+   */
+  setup2DMode(container) {
+    // Pegar a câmera 2D do ThreeEngine
+    const camera2D = this.threeEngine.camera2D;
+
+    console.log('[RuntimeEngine] setup2DMode - camera2D:', !!camera2D);
+    console.log('[RuntimeEngine] setup2DMode - player:', this.playerObject?.name);
+    console.log('[RuntimeEngine] setup2DMode - player position:', this.playerObject?.position);
+
+    if (!camera2D) {
+      console.error('[RuntimeEngine] Camera2D not found! Make sure project is in 2D mode.');
+      return;
+    }
+
+    // Ler configurações do player
+    const controlSettings = this.playerObject.userData?.controlSettings || null;
+    console.log('[RuntimeEngine] setup2DMode - controlSettings:', controlSettings);
+
+    // Criar controle 2D
+    this.character2DController = new Character2DController(
+      this.playerObject,
+      camera2D,
+      controlSettings
+    );
+    // Passar container para eventos de click-to-move
+    this.character2DController.enable(container);
+
+    // Centralizar câmera na posição inicial do player
+    camera2D.moveTo(this.playerObject.position.x, this.playerObject.position.y, true);
+
+    // O controller agora gerencia o modo da câmera (follow/free) baseado nas settings
+
+    // Ler configurações de câmera e cursor
+    const cameraSettings = controlSettings?.camera || {};
+    const cursorSettings = controlSettings?.cursor || {};
+
+    // Configurar modo da câmera
+    const cameraMode = cameraSettings.mode || 'follow';
+    camera2D.setCameraMode(cameraMode);
+
+    // Configurar follow smoothing
+    if (cameraSettings.followSmoothing) {
+      camera2D.followSmoothing = cameraSettings.followSmoothing;
+    }
+
+    // Configurar edge scroll (só funciona no modo 'free')
+    const edgeScrollEnabled = cameraSettings.edgeScrollEnabled !== false; // true por padrão
+    camera2D.setEdgeScrollEnabled(edgeScrollEnabled);
+    camera2D.setEdgeScrollSettings(
+      cameraSettings.edgeScrollMargin || 30,
+      cameraSettings.edgeScrollSpeed || 8
+    );
+
+    // Habilitar Game Mode com cursor configurável
+    camera2D.enableGameMode(cursorSettings);
+
+    console.log('[RuntimeEngine] 2D Mode setup complete');
+    console.log('[RuntimeEngine] Camera2D position:', camera2D.getPosition());
+    console.log('[RuntimeEngine] Camera2D zoom:', camera2D.getZoom());
+  }
+
+  /**
    * Para o runtime (chamado quando volta para Dev mode)
    */
   stop() {
@@ -264,9 +337,20 @@ export default class RuntimeEngine {
       this.clickToMoveController.disable();
       this.clickToMoveController = null;
     }
+    if (this.character2DController) {
+      this.character2DController.disable();
+      this.character2DController = null;
+    }
     if (this.cameraController) {
       this.cameraController.disable();
       this.cameraController = null;
+    }
+
+    // Limpar follow target, desabilitar edge scroll e game mode da câmera 2D
+    if (this.threeEngine.camera2D) {
+      this.threeEngine.camera2D.clearFollowTarget();
+      this.threeEngine.camera2D.setEdgeScrollEnabled(false);
+      this.threeEngine.camera2D.disableGameMode();
     }
 
     // Restaurar câmera
@@ -313,6 +397,9 @@ export default class RuntimeEngine {
     if (this.clickToMoveController) {
       this.clickToMoveController.update(deltaTime);
     }
+    if (this.character2DController) {
+      this.character2DController.update(deltaTime);
+    }
     if (this.cameraController) {
       this.cameraController.update(deltaTime);
     }
@@ -355,11 +442,22 @@ export default class RuntimeEngine {
       overlay.id = 'game-instructions';
 
       const cameraMode = this.playerObject?.userData?.cameraMode || 'isometric';
+      const is2D = this.threeEngine.is2D;
       let modeText = 'Câmera Livre';
       let controls = 'Mouse = Olhar';
 
       if (this.playerObject) {
-        if (cameraMode === 'firstPerson') {
+        if (is2D) {
+          // Modo 2D
+          const hasGravity = this.playerObject.userData?.controlSettings?.movement?.gravity > 0;
+          if (hasGravity) {
+            modeText = '2D Platformer';
+            controls = 'A/D ou ←/→ = Mover | Espaço = Pular';
+          } else {
+            modeText = '2D Top-Down';
+            controls = 'WASD ou Setas = Mover';
+          }
+        } else if (cameraMode === 'firstPerson') {
           modeText = 'First Person';
           controls = 'Mouse = Olhar | WASD = Mover';
         } else if (cameraMode === 'clickToMove') {
@@ -408,10 +506,14 @@ export default class RuntimeEngine {
    * Esconde instruções
    */
   hideInstructions() {
+    // Remover overlay de instruções
     const overlay = document.getElementById('game-instructions');
     if (overlay) {
       overlay.remove();
     }
+
+    // Remover qualquer cursor customizado órfão
+    document.querySelectorAll('.game-cursor').forEach(el => el.remove());
   }
 
   /**

@@ -16,6 +16,9 @@ export default function ProjectHub({ onProjectOpen }) {
   const [activeTab, setActiveTab] = useState('projects'); // 'projects' | 'recent' | 'learn'
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Estado para modal de confirmação de delete
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // { project, isDeleting }
+
   // Carregar projetos na inicialização
   useEffect(() => {
     loadProjects();
@@ -58,14 +61,32 @@ export default function ProjectHub({ onProjectOpen }) {
     }
   };
 
-  const handleDeleteProject = async (projectPath) => {
+  // Solicitar confirmação de delete (abre modal)
+  const handleRequestDelete = (project) => {
+    setDeleteConfirm({ project, isDeleting: false });
+  };
+
+  // Confirmar delete
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm?.project) return;
+
+    setDeleteConfirm(prev => ({ ...prev, isDeleting: true }));
+
     try {
+      const projectPath = deleteConfirm.project.path || deleteConfirm.project.folderName;
       await projectManager.deleteProject(projectPath);
       await loadProjects(); // Recarregar lista
+      setDeleteConfirm(null); // Fechar modal
     } catch (e) {
       console.error('Failed to delete project:', e);
       alert('Erro ao deletar projeto: ' + e.message);
+      setDeleteConfirm(null);
     }
+  };
+
+  // Cancelar delete
+  const handleCancelDelete = () => {
+    setDeleteConfirm(null);
   };
 
   const handleImportProject = async () => {
@@ -98,7 +119,7 @@ export default function ProjectHub({ onProjectOpen }) {
           <div className="logo-icon">◆</div>
           <div className="logo-text">
             <span className="logo-name">ENGINE VOID</span>
-            <span className="logo-version">v0.4.0</span>
+            <span className="logo-version">v0.5.0</span>
           </div>
         </div>
 
@@ -202,7 +223,7 @@ export default function ProjectHub({ onProjectOpen }) {
                         key={project.path || project.folderName}
                         project={project}
                         onOpen={handleOpenProject}
-                        onDelete={handleDeleteProject}
+                        onRequestDelete={handleRequestDelete}
                       />
                     ))
                   )}
@@ -224,7 +245,7 @@ export default function ProjectHub({ onProjectOpen }) {
                         key={project.path}
                         project={project}
                         onOpen={handleOpenProject}
-                        onDelete={handleDeleteProject}
+                        onRequestDelete={handleRequestDelete}
                         isRecent
                       />
                     ))
@@ -289,6 +310,49 @@ export default function ProjectHub({ onProjectOpen }) {
         onClose={() => setShowNewProjectModal(false)}
         onCreate={handleCreateProject}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="modal-overlay" onClick={handleCancelDelete}>
+          <div className="modal-content delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Confirmar Exclusão</h2>
+              <button className="modal-close" onClick={handleCancelDelete} disabled={deleteConfirm.isDeleting}>
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="delete-warning">
+                <span className="warning-icon">⚠️</span>
+                <p>
+                  Tem certeza que deseja deletar o projeto <strong>"{deleteConfirm.project.name}"</strong>?
+                </p>
+                <p className="warning-text">Esta ação não pode ser desfeita.</p>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleCancelDelete}
+                disabled={deleteConfirm.isDeleting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleConfirmDelete}
+                disabled={deleteConfirm.isDeleting}
+              >
+                {deleteConfirm.isDeleting ? 'Deletando...' : 'Deletar Projeto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

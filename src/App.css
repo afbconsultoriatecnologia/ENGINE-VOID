@@ -35,3 +35,9 @@ html, body, #root {
   height: 100% !important;
   display: block;
 }
+
+/* Esconder cursor do sistema no Game mode */
+.hide-cursor,
+.hide-cursor * {
+  cursor: none !important;
+}

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import Toolbar from './Toolbar';
 import HierarchyPanel from './HierarchyPanel';
 import InspectorPanel from './InspectorPanel';
+import InspectorPanel2D from './InspectorPanel2D';
 import ProjectPanel from './ProjectPanel';
 import TransformOverlay from './TransformOverlay';
 import ConsolePanel from './ConsolePanel';
@@ -350,15 +351,23 @@ export default function EditorLayout({
         />
       )}
 
-      {/* Inspector Panel */}
+      {/* Inspector Panel - 2D or 3D based on project type */}
       {panelVisibility.inspector && (
-        <InspectorPanel
-          engine={engine}
-          selectedObject={selectedObject}
-          scriptManager={scriptManager}
-          onOpenScriptEditor={handleOpenScriptEditor}
-          is2D={is2D}
-        />
+        is2D ? (
+          <InspectorPanel2D
+            engine={engine}
+            selectedObject={selectedObject}
+            scriptManager={scriptManager}
+            onOpenScriptEditor={handleOpenScriptEditor}
+          />
+        ) : (
+          <InspectorPanel
+            engine={engine}
+            selectedObject={selectedObject}
+            scriptManager={scriptManager}
+            onOpenScriptEditor={handleOpenScriptEditor}
+          />
+        )
       )}
 
       {/* Resize Handle - Project */}

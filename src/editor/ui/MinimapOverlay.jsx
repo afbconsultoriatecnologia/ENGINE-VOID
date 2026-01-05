@@ -31,17 +31,23 @@ export default function MinimapOverlay({ runtimeEngine }) {
   const getSettings = useCallback(() => {
     if (!runtimeEngine?.playerObject) return null;
 
-    // Obter settings do player ou usar defaults
-    const defaults = MinimapSystem.getDefaultSettings();
+    // Obter settings do player - minimap SÓ aparece se minimapSettings estiver definido
     const minimapSettings = runtimeEngine.playerObject.userData?.minimapSettings;
 
-    // Se não tem settings configurados, usar defaults (minimap habilitado por padrão)
-    const merged = minimapSettings
-      ? { ...defaults, ...minimapSettings, fogOfWar: { ...defaults.fogOfWar, ...minimapSettings.fogOfWar } }
-      : defaults;
+    // Se não tem minimapSettings definido, NÃO mostrar minimap
+    if (!minimapSettings) return null;
 
     // Verificar se está habilitado
-    if (!merged.enabled) return null;
+    if (minimapSettings.enabled === false) return null;
+
+    // Mesclar com defaults
+    const defaults = MinimapSystem.getDefaultSettings();
+    const merged = {
+      ...defaults,
+      ...minimapSettings,
+      fogOfWar: { ...defaults.fogOfWar, ...minimapSettings.fogOfWar },
+      markerColors: { ...defaults.markerColors, ...minimapSettings.markerColors }
+    };
 
     console.log('[MinimapOverlay] Settings:', merged);
     return merged;
@@ -104,13 +110,15 @@ export default function MinimapOverlay({ runtimeEngine }) {
     const player = runtimeEngine.playerObject;
     const canvas = canvasRef.current;
 
-    console.log('[MinimapOverlay] Initializing...', { player: player.name, settings });
+    const is2D = runtimeEngine.threeEngine.is2D || false;
+    console.log('[MinimapOverlay] Initializing...', { player: player.name, settings, is2D });
 
     // Criar MinimapSystem
     const minimapSystem = new MinimapSystem(
       runtimeEngine.threeEngine.scene,
       player,
-      settings
+      settings,
+      is2D
     );
     minimapSystemRef.current = minimapSystem;
 
