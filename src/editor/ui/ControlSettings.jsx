@@ -1,18 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
+import { PropertyLabel, GuideIcon } from './GuideTooltip';
 import './ControlSettings.css';
-
-/**
- * PropertyLabel - Label com tooltip
- */
-function PropertyLabel({ label, tooltip }) {
-  return (
-    <label title={tooltip}>
-      {label}
-      {tooltip && <span className="guide-icon small">?</span>}
-    </label>
-  );
-}
 
 /**
  * KeyBindInput - Input para captura de tecla
@@ -110,7 +99,7 @@ function CursorImageSelector({ customCursors, onChange }) {
     <div className="cursor-image-selector">
       <div className="cursor-images-header">
         <span>Imagens por Direção</span>
-        <span className="guide-icon small" title="Selecione imagens PNG/SVG para cada direção do cursor">?</span>
+        <GuideIcon tooltip="Selecione imagens PNG/SVG para cada direção do cursor" />
       </div>
       <div className="cursor-images-grid">
         {directions.map(({ key, label, tooltip }) => (
@@ -149,7 +138,7 @@ function CursorImageSelector({ customCursors, onChange }) {
 /**
  * ControlSettings - Seção de configuração de controles no Inspector
  */
-export default function ControlSettings({ object, onChange }) {
+export default function ControlSettings({ object, controlMode, onChange }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedSections, setExpandedSections] = useState({
     mode2d: true,
@@ -181,6 +170,7 @@ export default function ControlSettings({ object, onChange }) {
         // Click-to-move
         clickToMove: userSettings.movement?.clickToMove ?? defaults.movement.clickToMove,
         clickStopDistance: userSettings.movement?.clickStopDistance ?? defaults.movement.clickStopDistance,
+        wasdMode: userSettings.movement?.wasdMode ?? defaults.movement.wasdMode,
         // Grid movement
         gridMovement: userSettings.movement?.gridMovement ?? defaults.movement.gridMovement,
         tileSize: userSettings.movement?.tileSize ?? defaults.movement.tileSize
@@ -293,7 +283,7 @@ export default function ControlSettings({ object, onChange }) {
 
             {expandedSections.mode2d && (
               <div className="subsection-content">
-                {/* Game Style Preset */}
+                {/* Game Style Preset — filtrado por controlMode */}
                 <div className="property-row">
                   <PropertyLabel
                     label="Estilo de Controle"
@@ -305,40 +295,62 @@ export default function ControlSettings({ object, onChange }) {
                       const style = e.target.value;
                       updateSetting('gameStyle', style);
 
-                      // Aplicar presets baseado no estilo
                       switch (style) {
                         case 'followWASD':
-                          // Câmera Fixa + WASD
                           updateSetting('camera.mode', 'follow');
                           updateSetting('movement.clickToMove', false);
                           updateSetting('movement.gridMovement', false);
                           updateSetting('camera.edgeScrollEnabled', false);
                           break;
                         case 'freeClick':
-                          // Câmera Livre + Click-to-Move
                           updateSetting('camera.mode', 'free');
                           updateSetting('movement.clickToMove', true);
                           updateSetting('movement.gridMovement', false);
                           updateSetting('camera.edgeScrollEnabled', true);
                           break;
                         case 'gridWASD':
-                          // Câmera Fixa + Grid
                           updateSetting('camera.mode', 'follow');
                           updateSetting('movement.clickToMove', false);
                           updateSetting('movement.gridMovement', true);
                           updateSetting('camera.edgeScrollEnabled', false);
                           break;
                         case 'custom':
-                          // Não altera nada, permite configuração manual
                           break;
                       }
                     }}
                     className="select-input"
                   >
-                    <option value="followWASD">Câmera Fixa + WASD</option>
-                    <option value="freeClick">Câmera Livre + Click-to-Move</option>
-                    <option value="gridWASD">Câmera Fixa + Grid</option>
-                    <option value="custom">Personalizado</option>
+                    {/* Top-Down: WASD, Grid, Custom */}
+                    {controlMode === 'topDown' && (
+                      <>
+                        <option value="followWASD">Câmera Fixa + WASD</option>
+                        <option value="gridWASD">Câmera Fixa + Grid</option>
+                        <option value="custom">Personalizado</option>
+                      </>
+                    )}
+                    {/* Platformer: só WASD (precisa gravidade + teclado) */}
+                    {controlMode === 'platformer' && (
+                      <>
+                        <option value="followWASD">Câmera Fixa + WASD</option>
+                        <option value="custom">Personalizado</option>
+                      </>
+                    )}
+                    {/* Click-to-Move: só Click, Custom */}
+                    {controlMode === 'clickToMove' && (
+                      <>
+                        <option value="freeClick">Câmera Livre + Click-to-Move</option>
+                        <option value="custom">Personalizado</option>
+                      </>
+                    )}
+                    {/* Fallback se controlMode não definido */}
+                    {!controlMode && (
+                      <>
+                        <option value="followWASD">Câmera Fixa + WASD</option>
+                        <option value="freeClick">Câmera Livre + Click-to-Move</option>
+                        <option value="gridWASD">Câmera Fixa + Grid</option>
+                        <option value="custom">Personalizado</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -371,7 +383,7 @@ export default function ControlSettings({ object, onChange }) {
                           onChange={(e) => updateSetting('movement.clickToMove', e.target.checked)}
                         />
                         <span className="checkbox-text">Click-to-Move</span>
-                        <span className="guide-icon small" title="Player se move até onde você clicar no cenário">?</span>
+                        <GuideIcon tooltip="Player se move até onde você clicar no cenário" />
                       </label>
                     </div>
 
@@ -383,7 +395,7 @@ export default function ControlSettings({ object, onChange }) {
                           onChange={(e) => updateSetting('movement.gridMovement', e.target.checked)}
                         />
                         <span className="checkbox-text">Movimento em Grid</span>
-                        <span className="guide-icon small" title="Movimento discreto, tile a tile. Ideal para jogos de puzzle ou RPG tático.">?</span>
+                        <GuideIcon tooltip="Movimento discreto, tile a tile. Ideal para jogos de puzzle ou RPG tático." />
                       </label>
                     </div>
 
@@ -428,47 +440,52 @@ export default function ControlSettings({ object, onChange }) {
                         <span className="value-display">{settings.camera.followSmoothing}</span>
                       </div>
                     )}
+                  </>
+                )}
 
-                    <div className="property-row checkbox-row">
-                      <label title="Câmera move automaticamente quando o mouse chega na borda da tela">
-                        <input
-                          type="checkbox"
-                          checked={settings.camera.edgeScrollEnabled}
-                          onChange={(e) => updateSetting('camera.edgeScrollEnabled', e.target.checked)}
-                        />
-                        <span className="checkbox-text">Edge Scroll</span>
-                        <span className="guide-icon small" title="Move a câmera quando o mouse atinge as bordas da tela. Útil para explorar mapas grandes.">?</span>
-                      </label>
+                {/* Edge Scroll — sempre visível */}
+                <div className="subsection-divider">Edge Scroll</div>
+
+                <div className="property-row checkbox-row">
+                  <label title="Câmera move automaticamente quando o mouse chega na borda da tela">
+                    <input
+                      type="checkbox"
+                      checked={settings.camera.edgeScrollEnabled}
+                      onChange={(e) => updateSetting('camera.edgeScrollEnabled', e.target.checked)}
+                    />
+                    <span className="checkbox-text">Ativado</span>
+                    <GuideIcon tooltip="Move a câmera quando o mouse atinge as bordas da tela. Útil para explorar mapas grandes." />
+                  </label>
+                </div>
+
+                {settings.camera.edgeScrollEnabled && (
+                  <>
+                    <div className="property-row">
+                      <PropertyLabel label="Margem" tooltip="Distância em pixels da borda da tela para ativar o scroll" />
+                      <input
+                        type="number"
+                        value={settings.camera.edgeScrollMargin}
+                        onChange={(e) => updateSetting('camera.edgeScrollMargin', parseInt(e.target.value) || 30)}
+                        min="10"
+                        max="100"
+                        step="5"
+                      />
                     </div>
 
-                    {settings.camera.edgeScrollEnabled && (
-                      <>
-                        <div className="property-row">
-                          <PropertyLabel label="Margem" tooltip="Distância em pixels da borda para ativar o scroll" />
-                          <input
-                            type="number"
-                            value={settings.camera.edgeScrollMargin}
-                            onChange={(e) => updateSetting('camera.edgeScrollMargin', parseInt(e.target.value) || 30)}
-                            min="10"
-                            max="100"
-                            step="5"
-                          />
-                        </div>
-
-                        <div className="property-row">
-                          <PropertyLabel label="Velocidade" tooltip="Velocidade do movimento da câmera no edge scroll" />
-                          <input
-                            type="range"
-                            value={settings.camera.edgeScrollSpeed}
-                            onChange={(e) => updateSetting('camera.edgeScrollSpeed', parseFloat(e.target.value))}
-                            min="1"
-                            max="20"
-                            step="1"
-                          />
-                          <span className="value-display">{settings.camera.edgeScrollSpeed}</span>
-                        </div>
-                      </>
-                    )}
+                    <div className="property-row">
+                      <PropertyLabel label="Vel. Câmera" tooltip="Velocidade do movimento da câmera no edge scroll" />
+                      <div className="slider-input">
+                        <input
+                          type="range"
+                          value={settings.camera.edgeScrollSpeed}
+                          onChange={(e) => updateSetting('camera.edgeScrollSpeed', parseFloat(e.target.value))}
+                          min="1"
+                          max="20"
+                          step="1"
+                        />
+                        <span className="value-display">{settings.camera.edgeScrollSpeed}</span>
+                      </div>
+                    </div>
                   </>
                 )}
 
@@ -513,15 +530,18 @@ export default function ControlSettings({ object, onChange }) {
                       />
                     </div>
 
-                    <div className="property-row">
-                      <PropertyLabel label="Cor" tooltip="Cor do cursor" />
-                      <input
-                        type="color"
-                        value={settings.cursor.cursorColor}
-                        onChange={(e) => updateSetting('cursor.cursorColor', e.target.value)}
-                      />
-                      <span className="color-hex">{settings.cursor.cursorColor}</span>
-                    </div>
+                    {/* Cor — só para estilos SVG, não para imagem custom */}
+                    {settings.cursor.cursorStyle !== 'custom' && (
+                      <div className="property-row">
+                        <PropertyLabel label="Cor" tooltip="Cor do cursor" />
+                        <input
+                          type="color"
+                          value={settings.cursor.cursorColor}
+                          onChange={(e) => updateSetting('cursor.cursorColor', e.target.value)}
+                        />
+                        <span className="color-hex">{settings.cursor.cursorColor}</span>
+                      </div>
+                    )}
 
                     {/* Custom Cursor Images */}
                     {settings.cursor.cursorStyle === 'custom' && (
@@ -548,8 +568,9 @@ export default function ControlSettings({ object, onChange }) {
 
             {expandedSections.movement && (
               <div className="subsection-content">
+                {/* Velocidade — sempre visível */}
                 <div className="property-row">
-                  <PropertyLabel label="Velocidade" tooltip="Velocidade base de movimento em unidades/segundo" />
+                  <PropertyLabel label="Vel. Player" tooltip="Velocidade base de movimento do personagem em unidades/segundo" />
                   <input
                     type="number"
                     value={settings.movement.speed}
@@ -560,53 +581,95 @@ export default function ControlSettings({ object, onChange }) {
                   />
                 </div>
 
-                <div className="property-row">
-                  <PropertyLabel label="Mult. Corrida" tooltip="Multiplicador de velocidade ao correr (Shift)" />
-                  <input
-                    type="number"
-                    value={settings.movement.sprintMultiplier}
-                    onChange={(e) => updateSetting('movement.sprintMultiplier', parseFloat(e.target.value) || 2)}
-                    min="1"
-                    max="5"
-                    step="0.1"
-                  />
-                </div>
+                {/* Sprint — topDown e platformer */}
+                {controlMode !== 'clickToMove' && (
+                  <div className="property-row">
+                    <PropertyLabel label="Mult. Corrida" tooltip="Multiplicador de velocidade ao correr (Shift)" />
+                    <input
+                      type="number"
+                      value={settings.movement.sprintMultiplier}
+                      onChange={(e) => updateSetting('movement.sprintMultiplier', parseFloat(e.target.value) || 2)}
+                      min="1"
+                      max="5"
+                      step="0.1"
+                    />
+                  </div>
+                )}
 
-                <div className="property-row">
-                  <PropertyLabel label="Força do Pulo" tooltip="Força vertical aplicada ao pular" />
-                  <input
-                    type="number"
-                    value={settings.movement.jumpForce}
-                    onChange={(e) => updateSetting('movement.jumpForce', parseFloat(e.target.value) || 8)}
-                    min="0"
-                    max="30"
-                    step="0.5"
-                  />
-                </div>
+                {/* Pulo — só platformer */}
+                {controlMode === 'platformer' && (
+                  <div className="property-row">
+                    <PropertyLabel label="Força do Pulo" tooltip="Força vertical aplicada ao pular" />
+                    <input
+                      type="number"
+                      value={settings.movement.jumpForce}
+                      onChange={(e) => updateSetting('movement.jumpForce', parseFloat(e.target.value) || 8)}
+                      min="0"
+                      max="30"
+                      step="0.5"
+                    />
+                  </div>
+                )}
 
-                <div className="property-row">
-                  <PropertyLabel label="Gravidade" tooltip="Força da gravidade aplicada ao player" />
-                  <input
-                    type="number"
-                    value={settings.movement.gravity}
-                    onChange={(e) => updateSetting('movement.gravity', parseFloat(e.target.value) || 20)}
-                    min="0"
-                    max="50"
-                    step="1"
-                  />
-                </div>
+                {/* Gravidade — só platformer */}
+                {controlMode === 'platformer' && (
+                  <div className="property-row">
+                    <PropertyLabel label="Gravidade" tooltip="Força da gravidade aplicada ao player" />
+                    <input
+                      type="number"
+                      value={settings.movement.gravity}
+                      onChange={(e) => updateSetting('movement.gravity', parseFloat(e.target.value) || 20)}
+                      min="0"
+                      max="50"
+                      step="1"
+                    />
+                  </div>
+                )}
 
-                <div className="property-row">
-                  <PropertyLabel label="Vel. Rotação" tooltip="Velocidade que o personagem gira para a direção do movimento" />
-                  <input
-                    type="number"
-                    value={settings.movement.rotationSpeed}
-                    onChange={(e) => updateSetting('movement.rotationSpeed', parseFloat(e.target.value) || 10)}
-                    min="1"
-                    max="30"
-                    step="1"
-                  />
-                </div>
+                {/* Rotação — topDown */}
+                {controlMode === 'topDown' && (
+                  <div className="property-row">
+                    <PropertyLabel label="Vel. Rotação" tooltip="Velocidade que o personagem gira para a direção do movimento" />
+                    <input
+                      type="number"
+                      value={settings.movement.rotationSpeed}
+                      onChange={(e) => updateSetting('movement.rotationSpeed', parseFloat(e.target.value) || 10)}
+                      min="1"
+                      max="30"
+                      step="1"
+                    />
+                  </div>
+                )}
+
+                {/* Click stop distance — só clickToMove */}
+                {controlMode === 'clickToMove' && (
+                  <>
+                    <div className="property-row">
+                      <PropertyLabel label="Distância de Parada" tooltip="Distância mínima do alvo para parar de mover" />
+                      <input
+                        type="number"
+                        value={settings.movement.clickStopDistance}
+                        onChange={(e) => updateSetting('movement.clickStopDistance', parseFloat(e.target.value) || 0.1)}
+                        min="0.01"
+                        max="2"
+                        step="0.05"
+                      />
+                    </div>
+
+                    <div className="property-row">
+                      <PropertyLabel label="Teclado (WASD)" tooltip="O que acontece quando pressiona WASD/Setas no modo Click-to-Move" />
+                      <select
+                        className="select-input"
+                        value={settings.movement.wasdMode || 'off'}
+                        onChange={(e) => updateSetting('movement.wasdMode', e.target.value)}
+                      >
+                        <option value="off">Desativado</option>
+                        <option value="movePlayer">Move o Player</option>
+                        <option value="moveCamera">Move a Câmera</option>
+                      </select>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -625,7 +688,7 @@ export default function ControlSettings({ object, onChange }) {
               <div className="subsection-content">
                 <div className="keybind-grid">
                   <div className="keybind-row">
-                    <span className="keybind-label">Frente</span>
+                    <span className="keybind-label">{controlMode === 'platformer' ? 'Cima' : 'Frente'}</span>
                     <KeyBindInput
                       value={settings.keys.forward}
                       onChange={(v) => updateSetting('keys.forward', v)}
@@ -637,7 +700,7 @@ export default function ControlSettings({ object, onChange }) {
                   </div>
 
                   <div className="keybind-row">
-                    <span className="keybind-label">Trás</span>
+                    <span className="keybind-label">{controlMode === 'platformer' ? 'Baixo' : 'Trás'}</span>
                     <KeyBindInput
                       value={settings.keys.backward}
                       onChange={(v) => updateSetting('keys.backward', v)}
@@ -672,21 +735,27 @@ export default function ControlSettings({ object, onChange }) {
                     />
                   </div>
 
-                  <div className="keybind-row">
-                    <span className="keybind-label">Pular</span>
-                    <KeyBindInput
-                      value={settings.keys.jump}
-                      onChange={(v) => updateSetting('keys.jump', v)}
-                    />
-                  </div>
+                  {/* Pulo — só platformer */}
+                  {controlMode === 'platformer' && (
+                    <div className="keybind-row">
+                      <span className="keybind-label">Pular</span>
+                      <KeyBindInput
+                        value={settings.keys.jump}
+                        onChange={(v) => updateSetting('keys.jump', v)}
+                      />
+                    </div>
+                  )}
 
-                  <div className="keybind-row">
-                    <span className="keybind-label">Correr</span>
-                    <KeyBindInput
-                      value={settings.keys.sprint}
-                      onChange={(v) => updateSetting('keys.sprint', v)}
-                    />
-                  </div>
+                  {/* Sprint — topDown e platformer */}
+                  {controlMode !== 'clickToMove' && (
+                    <div className="keybind-row">
+                      <span className="keybind-label">Correr</span>
+                      <KeyBindInput
+                        value={settings.keys.sprint}
+                        onChange={(v) => updateSetting('keys.sprint', v)}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="keybind-hint">
@@ -780,6 +849,7 @@ export function getDefaultSettings() {
       // Click-to-move
       clickToMove: false,
       clickStopDistance: 0.1,
+      wasdMode: 'off', // 'off', 'movePlayer', 'moveCamera'
       // Grid movement
       gridMovement: false,
       tileSize: 1

@@ -24,6 +24,7 @@ export class InputManager {
 
     // Atalhos registrados
     this.shortcuts = new Map();
+    this.gameMode = false; // Desabilita shortcuts simples durante game mode
 
     // Callbacks de eventos
     this.callbacks = {
@@ -153,6 +154,10 @@ export class InputManager {
     // Verificar atalhos registrados
     const shortcutKey = this._getShortcutKey(event);
     if (this.shortcuts.has(shortcutKey)) {
+      // Em game mode, só processar atalhos com modificador (Cmd/Ctrl) ou Escape
+      if (this.gameMode && !event.metaKey && !event.ctrlKey && event.code !== 'Escape') {
+        return; // Deixar o evento passar para o runtime (Character2DController)
+      }
       event.preventDefault();
       const callback = this.shortcuts.get(shortcutKey);
       callback(event);

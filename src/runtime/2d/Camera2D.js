@@ -233,17 +233,45 @@ export default class Camera2D {
 
     Object.entries(customCursors).forEach(([key, imagePath]) => {
       if (imagePath && typeof imagePath === 'string') {
-        const img = new Image();
-        img.onload = () => {
-          this.loadedCursorImages[key] = img;
-          console.log(`[Camera2D] Loaded custom cursor: ${key}`);
-        };
-        img.onerror = () => {
-          console.warn(`[Camera2D] Failed to load cursor image: ${key} - ${imagePath}`);
-        };
-        img.src = imagePath;
+        this.loadCursorImage(key, imagePath);
       }
     });
+  }
+
+  /**
+   * Carrega uma imagem de cursor (suporta caminhos locais via Tauri)
+   */
+  async loadCursorImage(key, imagePath) {
+    try {
+      let src = imagePath;
+
+      // Caminho local — converter via Tauri readFile + blob URL
+      const isLocalPath = imagePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(imagePath);
+      if (isLocalPath) {
+        try {
+          const { readFile } = await import('@tauri-apps/plugin-fs');
+          const fileData = await readFile(imagePath);
+          const ext = imagePath.split('.').pop().toLowerCase();
+          const mimeTypes = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml' };
+          const blob = new Blob([fileData], { type: mimeTypes[ext] || 'image/png' });
+          src = URL.createObjectURL(blob);
+        } catch (e) {
+          console.warn(`[Camera2D] Tauri not available, trying direct path for cursor: ${key}`);
+        }
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        this.loadedCursorImages[key] = img;
+        console.log(`[Camera2D] Loaded custom cursor: ${key}`);
+      };
+      img.onerror = () => {
+        console.warn(`[Camera2D] Failed to load cursor image: ${key} - ${imagePath}`);
+      };
+      img.src = src;
+    } catch (err) {
+      console.error(`[Camera2D] Error loading cursor image ${key}:`, err);
+    }
   }
 
   /**
@@ -676,6 +704,12 @@ export default class Camera2D {
     const rect = this.domElement.getBoundingClientRect();
     const margin = this.edgeScrollMargin;
 
+    // Compensar offset dos elementos ao redor do canvas (toolbar, painéis)
+    const topMargin = Math.max(0, margin - rect.top);
+    const bottomMargin = Math.max(0, margin - (window.innerHeight - rect.bottom));
+    const leftMargin = Math.max(0, margin - rect.left);
+    const rightMargin = Math.max(0, margin - (window.innerWidth - rect.right));
+
     // Atualizar posição virtual com movimento relativo
     this.virtualMouseX += event.movementX;
     this.virtualMouseY += event.movementY;
@@ -689,25 +723,25 @@ export default class Camera2D {
     let dirY = 0;
 
     // Borda esquerda - cursor trava no limite da margem
-    if (this.virtualMouseX <= margin) {
+    if (this.virtualMouseX <= leftMargin) {
       dirX = -1;
-      this.virtualMouseX = margin; // Travar no limite interno da margem
+      this.virtualMouseX = leftMargin;
     }
     // Borda direita - cursor trava no limite da margem
-    if (this.virtualMouseX >= rect.width - margin) {
+    if (this.virtualMouseX >= rect.width - rightMargin) {
       dirX = 1;
-      this.virtualMouseX = rect.width - margin; // Travar no limite interno da margem
+      this.virtualMouseX = rect.width - rightMargin;
     }
 
     // Borda superior - cursor trava no limite da margem
-    if (this.virtualMouseY <= margin) {
+    if (this.virtualMouseY <= topMargin) {
       dirY = 1;
-      this.virtualMouseY = margin; // Travar no limite interno da margem
+      this.virtualMouseY = topMargin;
     }
     // Borda inferior - cursor trava no limite da margem
-    if (this.virtualMouseY >= rect.height - margin) {
+    if (this.virtualMouseY >= rect.height - bottomMargin) {
       dirY = -1;
-      this.virtualMouseY = rect.height - margin; // Travar no limite interno da margem
+      this.virtualMouseY = rect.height - bottomMargin;
     }
 
     this.edgeScrollDirection.x = dirX;
@@ -732,28 +766,22 @@ export default class Camera2D {
     const margin = this.edgeScrollMargin;
     const rect = this.domElement.getBoundingClientRect();
 
-    // Posição do mouse real (coordenadas da janela)
-    const mouseX = this.mousePosition.x;
-    const mouseY = this.mousePosition.y;
-
     // Posição relativa ao canvas
-    const relX = mouseX - rect.left;
-    const relY = mouseY - rect.top;
+    const relX = this.mousePosition.x - rect.left;
+    const relY = this.mousePosition.y - rect.top;
 
-    // Também verificar proximidade com as bordas da janela
-    // Isso ajuda quando o canvas não preenche toda a janela
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    const nearWindowLeft = mouseX <= margin;
-    const nearWindowRight = mouseX >= windowWidth - margin;
-    const nearWindowTop = mouseY <= margin;
-    const nearWindowBottom = mouseY >= windowHeight - margin;
+    // Compensar offset dos elementos ao redor do canvas (toolbar, painéis)
+    // Para que a margem visual seja uniforme em relação à janela
+    const topMargin = Math.max(0, margin - rect.top);
+    const bottomMargin = Math.max(0, margin - (window.innerHeight - rect.bottom));
+    const leftMargin = Math.max(0, margin - rect.left);
+    const rightMargin = Math.max(0, margin - (window.innerWidth - rect.right));
 
-    // Verificar se está na zona de edge scroll (canvas OU janela)
-    const inLeftZone = relX <= margin || nearWindowLeft;
-    const inRightZone = relX >= rect.width - margin || nearWindowRight;
-    const inTopZone = relY <= margin || nearWindowTop;
-    const inBottomZone = relY >= rect.height - margin || nearWindowBottom;
+    // Verificar se está na zona de edge scroll
+    const inLeftZone = relX <= leftMargin;
+    const inRightZone = relX >= rect.width - rightMargin;
+    const inTopZone = relY <= topMargin;
+    const inBottomZone = relY >= rect.height - bottomMargin;
 
     // Verificar se mouse está completamente dentro (fora das margens)
     const isInsideCenter = !inLeftZone && !inRightZone && !inTopZone && !inBottomZone;
@@ -776,33 +804,33 @@ export default class Camera2D {
     // Calcular direção do scroll e posição do cursor virtual
     let dirX = 0;
     let dirY = 0;
-    let cursorX = Math.max(margin, Math.min(rect.width - margin, relX));
-    let cursorY = Math.max(margin, Math.min(rect.height - margin, relY));
+    let cursorX = Math.max(leftMargin, Math.min(rect.width - rightMargin, relX));
+    let cursorY = Math.max(topMargin, Math.min(rect.height - bottomMargin, relY));
 
     // Borda esquerda - cursor trava no limite da margem
     if (inLeftZone) {
       dirX = -1;
-      cursorX = margin;
-      if (relX < 0 || nearWindowLeft) this.isMouseOutside = true;
+      cursorX = leftMargin;
+      if (relX < 0) this.isMouseOutside = true;
     }
     // Borda direita - cursor trava no limite da margem
     if (inRightZone) {
       dirX = 1;
-      cursorX = rect.width - margin;
-      if (relX > rect.width || nearWindowRight) this.isMouseOutside = true;
+      cursorX = rect.width - rightMargin;
+      if (relX > rect.width) this.isMouseOutside = true;
     }
 
     // Borda superior - cursor trava no limite da margem
     if (inTopZone) {
       dirY = 1;
-      cursorY = margin;
-      if (relY < 0 || nearWindowTop) this.isMouseOutside = true;
+      cursorY = topMargin;
+      if (relY < 0) this.isMouseOutside = true;
     }
     // Borda inferior - cursor trava no limite da margem
     if (inBottomZone) {
       dirY = -1;
-      cursorY = rect.height - margin;
-      if (relY > rect.height || nearWindowBottom) this.isMouseOutside = true;
+      cursorY = rect.height - bottomMargin;
+      if (relY > rect.height) this.isMouseOutside = true;
     }
 
     // Definir cursor baseado na direção
@@ -990,18 +1018,29 @@ export default class Camera2D {
     }
 
     // Edge scrolling - mover câmera quando mouse na borda
-    // Só funciona no modo 'free' (Dota style). No modo 'follow' (MU style), a câmera segue o player
-    if (this.edgeScrollEnabled && this.cameraMode === 'free' && (this.edgeScrollDirection.x !== 0 || this.edgeScrollDirection.y !== 0)) {
-      // Calcular velocidade baseada no zoom (mais zoom = movimento mais lento)
+    if (this.edgeScrollEnabled && (this.edgeScrollDirection.x !== 0 || this.edgeScrollDirection.y !== 0)) {
       const scrollSpeed = this.edgeScrollSpeed / this.zoom;
 
-      // Aplicar movimento
-      this.position.x += this.edgeScrollDirection.x * scrollSpeed * deltaTime;
-      this.position.y += this.edgeScrollDirection.y * scrollSpeed * deltaTime;
+      if (this.cameraMode === 'free') {
+        // Modo free (Dota style) — move câmera diretamente
+        this.position.x += this.edgeScrollDirection.x * scrollSpeed * deltaTime;
+        this.position.y += this.edgeScrollDirection.y * scrollSpeed * deltaTime;
+        this.targetPosition.x = this.position.x;
+        this.targetPosition.y = this.position.y;
+      } else if (this.cameraMode === 'follow') {
+        // Modo follow (MU style) — desloca offset da câmera em relação ao player
+        this.followOffset.x += this.edgeScrollDirection.x * scrollSpeed * deltaTime;
+        this.followOffset.y += this.edgeScrollDirection.y * scrollSpeed * deltaTime;
+      }
+    }
 
-      // Atualizar target para manter a posição
-      this.targetPosition.x = this.position.x;
-      this.targetPosition.y = this.position.y;
+    // No modo follow, suavizar retorno do offset quando edge scroll para
+    if (this.cameraMode === 'follow' && this.edgeScrollDirection.x === 0 && this.edgeScrollDirection.y === 0) {
+      const decay = deltaTime * 3;
+      this.followOffset.x *= Math.max(0, 1 - decay);
+      this.followOffset.y *= Math.max(0, 1 - decay);
+      if (Math.abs(this.followOffset.x) < 0.01) this.followOffset.x = 0;
+      if (Math.abs(this.followOffset.y) < 0.01) this.followOffset.y = 0;
     }
 
     // Follow target

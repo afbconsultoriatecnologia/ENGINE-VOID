@@ -3038,6 +3038,11 @@ export class ThreeEngine {
       this.grid2D.setVisible(mode === 'dev');
     }
 
+    // Desabilitar shortcuts do editor durante game mode
+    if (this.inputManager) {
+      this.inputManager.gameMode = (mode === 'game');
+    }
+
     // Gerenciar RuntimeEngine (já criado no init)
     if (mode === 'game' && previousMode === 'dev') {
       // Entrando em Game mode - iniciar RuntimeEngine
@@ -3441,6 +3446,19 @@ export class ThreeEngine {
     if (obj && data.scriptProperties) {
       obj.userData.scriptProperties = JSON.parse(JSON.stringify(data.scriptProperties));
     }
+
+    // Restaurar textura de sprites 2D (se texturePath salvo no userData)
+    if (obj && obj.userData.is2D && obj.userData.texturePath) {
+      try {
+        await this.updateSpriteTexture(obj.name, obj.userData.texturePath, {
+          filterMode: obj.userData.textureFilter,
+          repeat: obj.userData.textureRepeat,
+          offset: obj.userData.textureOffset
+        });
+      } catch (err) {
+        console.warn(`Não foi possível restaurar textura de "${obj.name}":`, err);
+      }
+    }
   }
 
   /**
@@ -3716,6 +3734,111 @@ export class ThreeEngine {
     // Atualizar opacidade
     if (updates.opacity !== undefined) {
       SpriteRenderer.setOpacity(sprite, updates.opacity);
+    }
+  }
+
+  /**
+   * Atualiza a textura de um sprite 2D
+   * @param {string} name - Nome do sprite
+   * @param {string|null} texturePath - Caminho da textura (null para remover)
+   * @param {Object} options - Opções adicionais (filterMode, repeat, offset)
+   */
+  async updateSpriteTexture(name, texturePath, options = {}) {
+    const sprite = this.objects.get(name);
+    if (!sprite || !sprite.userData.is2D) return;
+
+    if (!texturePath) {
+      // Remover textura - voltar para cor sólida
+      if (sprite.material.map) {
+        sprite.material.map.dispose();
+        sprite.material.map = null;
+        sprite.material.needsUpdate = true;
+      }
+      sprite.userData.texturePath = null;
+      sprite.userData.textureFilter = null;
+      return;
+    }
+
+    try {
+      // Carregar via AssetLoader se caminho local
+      let loadUrl = texturePath;
+      if (this.assetLoader && this.assetLoader.isLocalPath(texturePath)) {
+        const ext = texturePath.split('.').pop().toLowerCase();
+        loadUrl = await this.assetLoader.localPathToBlobUrl(texturePath, ext);
+      }
+
+      const loader = new THREE.TextureLoader();
+      const texture = await new Promise((resolve, reject) => {
+        loader.load(loadUrl, resolve, undefined, reject);
+      });
+
+      // Filtro: 'nearest' para pixel art, 'linear' para suave
+      const filterMode = options.filterMode || sprite.userData.textureFilter || 'nearest';
+      if (filterMode === 'nearest') {
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestFilter;
+      } else {
+        texture.magFilter = THREE.LinearFilter;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+      }
+
+      // Tiling
+      if (options.repeat || sprite.userData.textureRepeat) {
+        const repeat = options.repeat || sprite.userData.textureRepeat;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(repeat.x ?? 1, repeat.y ?? 1);
+      }
+
+      // Offset
+      if (options.offset || sprite.userData.textureOffset) {
+        const offset = options.offset || sprite.userData.textureOffset;
+        texture.offset.set(offset.x ?? 0, offset.y ?? 0);
+      }
+
+      // Aplicar ao material
+      if (sprite.material.map) {
+        sprite.material.map.dispose();
+      }
+      sprite.material.map = texture;
+      sprite.material.transparent = true;
+      sprite.material.needsUpdate = true;
+
+      // Salvar no userData
+      sprite.userData.texturePath = texturePath;
+      sprite.userData.textureFilter = filterMode;
+      if (options.repeat) sprite.userData.textureRepeat = options.repeat;
+      if (options.offset) sprite.userData.textureOffset = options.offset;
+
+    } catch (error) {
+      console.error('[ThreeEngine] Erro ao carregar textura:', texturePath, error);
+    }
+  }
+
+  /**
+   * Atualiza dimensões (width/height) de um sprite 2D recriando a geometria
+   * @param {string} name - Nome do sprite
+   * @param {number} width - Nova largura
+   * @param {number} height - Nova altura
+   */
+  updateSpriteDimensions(name, width, height) {
+    const sprite = this.objects.get(name);
+    if (!sprite || !sprite.userData.is2D) return;
+
+    // Dispor geometria antiga
+    sprite.geometry.dispose();
+
+    // Criar nova geometria
+    sprite.geometry = new THREE.PlaneGeometry(width, height);
+
+    // Salvar no userData
+    sprite.userData.originalWidth = width;
+    sprite.userData.originalHeight = height;
+
+    // Se tem spritesheet, re-aplicar UV do frame atual
+    if (sprite.userData.spritesheet) {
+      const ss = sprite.userData.spritesheet;
+      SpriteRenderer.setFrame(sprite, ss.currentFrame || 0);
     }
   }
 

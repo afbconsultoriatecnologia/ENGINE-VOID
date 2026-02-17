@@ -183,7 +183,7 @@
   flex-shrink: 0 !important;
 }
 
-/* Guide icon */
+/* Guide icon with custom tooltip */
 .control-settings .guide-icon {
   display: inline-flex;
   align-items: center;
@@ -198,12 +198,14 @@
   border: 1px solid var(--border);
   border-radius: 50%;
   cursor: help;
+  position: relative;
 }
 
 .control-settings .guide-icon:hover {
   color: var(--accent);
   background-color: rgba(61, 157, 246, 0.2);
 }
+
 
 /* Keybind Grid */
 .control-settings .keybind-grid {

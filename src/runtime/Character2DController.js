@@ -16,7 +16,8 @@ function getDefaultControlSettings() {
       tileSize: 1, // Tamanho do tile em unidades do mundo
       // Click-to-move settings
       clickToMove: false, // Se true, clique no chão move o player
-      clickStopDistance: 0.1 // Distância para parar ao chegar no destino
+      clickStopDistance: 0.1, // Distância para parar ao chegar no destino
+      wasdMode: 'off' // 'off', 'movePlayer', 'moveCamera'
     },
     keys: {
       forward: 'KeyW',
@@ -70,6 +71,7 @@ export default class Character2DController {
     // Click-to-move settings
     this.clickToMove = this.settings.movement.clickToMove || false;
     this.clickStopDistance = this.settings.movement.clickStopDistance || 0.1;
+    this.wasdMode = this.settings.movement.wasdMode || 'off'; // 'off', 'movePlayer', 'moveCamera'
 
     // Camera settings
     this.cameraMode = this.settings.camera.mode || 'follow';
@@ -308,9 +310,19 @@ export default class Character2DController {
   update(deltaTime) {
     if (!this.character) return;
 
-    // Click-to-move tem prioridade se ativo
-    if (this.clickToMove && this.isMovingToClick) {
-      this.updateClickToMove(deltaTime);
+    // Click-to-move mode
+    if (this.clickToMove) {
+      if (this.isMovingToClick) {
+        this.updateClickToMove(deltaTime);
+      }
+
+      // WASD behavior baseado em wasdMode
+      if (this.wasdMode === 'movePlayer' && !this.isMovingToClick) {
+        this.updateContinuousMovement(deltaTime);
+      } else if (this.wasdMode === 'moveCamera') {
+        this.updateWASDCameraPan(deltaTime);
+      }
+      // wasdMode === 'off': não faz nada com teclado
       return;
     }
 
@@ -514,6 +526,37 @@ export default class Character2DController {
         this.isGrounded = true;
       }
     }
+  }
+
+  /**
+   * Move a câmera com WASD (pan) — usado no modo clickToMove + wasdMode='moveCamera'
+   */
+  updateWASDCameraPan(deltaTime) {
+    if (!this.camera2D) return;
+
+    let panX = 0;
+    let panY = 0;
+
+    if (this.keys.right) panX += 1;
+    if (this.keys.left) panX -= 1;
+    if (this.keys.forward) panY += 1;
+    if (this.keys.backward) panY -= 1;
+
+    if (panX === 0 && panY === 0) return;
+
+    // Normalizar diagonal
+    if (panX !== 0 && panY !== 0) {
+      const len = Math.sqrt(panX * panX + panY * panY);
+      panX /= len;
+      panY /= len;
+    }
+
+    const speed = this.moveSpeed * deltaTime;
+    // Mover câmera diretamente (mesmo padrão do edge scroll)
+    this.camera2D.position.x += panX * speed;
+    this.camera2D.position.y += panY * speed;
+    this.camera2D.targetPosition.x = this.camera2D.position.x;
+    this.camera2D.targetPosition.y = this.camera2D.position.y;
   }
 
   /**
