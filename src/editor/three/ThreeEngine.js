@@ -69,6 +69,7 @@ export class ThreeEngine {
     this.mode = this.options.mode || 'dev'; // Default to 'dev' mode
     this.projectType = options.projectType || '3d'; // '2d' ou '3d'
     this.is2D = this.projectType === '2d';
+    console.log('[ThreeEngine] Constructor - projectType:', this.projectType, 'is2D:', this.is2D);
     this.camera2D = null; // Câmera 2D (se projeto 2D)
     this.grid2D = null; // Grid 2D (se projeto 2D)
     this._isDisposed = false; // Flag para prevenir double disposal
@@ -3635,6 +3636,8 @@ export class ThreeEngine {
    * @param {Object} options - Opções do sprite
    */
   createSprite(name, options = {}) {
+    console.log('[ThreeEngine] createSprite called:', name, options);
+
     // Gerar nome único se necessário
     let finalName = name;
     if (this.objects.has(name)) {
@@ -3645,6 +3648,8 @@ export class ThreeEngine {
       name: finalName,
       ...options
     });
+
+    console.log('[ThreeEngine] Sprite created:', finalName, 'position:', sprite.position);
 
     // Adicionar à cena e ao registro
     this.scene.add(sprite);

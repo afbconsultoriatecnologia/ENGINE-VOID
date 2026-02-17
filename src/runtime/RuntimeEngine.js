@@ -38,6 +38,10 @@ export default class RuntimeEngine {
     this.originalCameraRotation = null;
     this.originalPlayerPosition = null;
 
+    // Câmera 2D original (para restaurar depois)
+    this.originalCamera2DPosition = null;
+    this.originalCamera2DZoom = null;
+
     // Callbacks do game loop
     this.gameLoop.onUpdate = this.update.bind(this);
     this.gameLoop.onRender = this.render.bind(this);
@@ -119,9 +123,17 @@ export default class RuntimeEngine {
       this.threeEngine.selectionController.disable();
     }
 
-    // Salvar estado original
+    // Salvar estado original da câmera 3D
     this.originalCameraPosition = editorCamera.position.clone();
     this.originalCameraRotation = editorCamera.rotation.clone();
+
+    // Salvar estado original da câmera 2D (se existir)
+    if (this.threeEngine.camera2D) {
+      const cam2DPos = this.threeEngine.camera2D.getPosition();
+      this.originalCamera2DPosition = { x: cam2DPos.x, y: cam2DPos.y };
+      this.originalCamera2DZoom = this.threeEngine.camera2D.getZoom();
+      console.log('[RuntimeEngine] Saved Camera2D state:', this.originalCamera2DPosition, 'zoom:', this.originalCamera2DZoom);
+    }
 
     // Encontrar Player e Camera
     this.playerObject = this.findPlayer();
@@ -256,7 +268,6 @@ export default class RuntimeEngine {
 
     console.log('[RuntimeEngine] setup2DMode - camera2D:', !!camera2D);
     console.log('[RuntimeEngine] setup2DMode - player:', this.playerObject?.name);
-    console.log('[RuntimeEngine] setup2DMode - player position:', this.playerObject?.position);
 
     if (!camera2D) {
       console.error('[RuntimeEngine] Camera2D not found! Make sure project is in 2D mode.');
@@ -264,7 +275,36 @@ export default class RuntimeEngine {
     }
 
     // Ler configurações do player
-    const controlSettings = this.playerObject.userData?.controlSettings || null;
+    const userData = this.playerObject.userData || {};
+    const controlMode = userData.controlMode || 'topDown';
+    let controlSettings = userData.controlSettings || {};
+
+    // Garantir que movement existe e tem valores baseados no controlMode
+    if (!controlSettings.movement) {
+      controlSettings.movement = {};
+    }
+
+    // Aplicar defaults baseados no controlMode se não estiver definido
+    if (controlSettings.movement.gravity === undefined) {
+      if (controlMode === 'platformer') {
+        controlSettings.movement.gravity = 20;
+        controlSettings.movement.jumpForce = 10;
+      } else {
+        // topDown ou clickToMove
+        controlSettings.movement.gravity = 0;
+      }
+    }
+
+    if (controlSettings.movement.speed === undefined) {
+      controlSettings.movement.speed = 5;
+    }
+
+    // Click-to-move
+    if (controlMode === 'clickToMove') {
+      controlSettings.movement.clickToMove = true;
+    }
+
+    console.log('[RuntimeEngine] setup2DMode - controlMode:', controlMode);
     console.log('[RuntimeEngine] setup2DMode - controlSettings:', controlSettings);
 
     // Criar controle 2D
@@ -279,19 +319,31 @@ export default class RuntimeEngine {
     // Centralizar câmera na posição inicial do player
     camera2D.moveTo(this.playerObject.position.x, this.playerObject.position.y, true);
 
-    // O controller agora gerencia o modo da câmera (follow/free) baseado nas settings
-
-    // Ler configurações de câmera e cursor
-    const cameraSettings = controlSettings?.camera || {};
+    // Ler configurações de câmera (pode vir de controlSettings.camera OU userData.cameraSettings)
+    const cameraSettingsFromControl = controlSettings?.camera || {};
+    const cameraSettingsFromUserData = userData.cameraSettings || {};
+    const cameraSettings = { ...cameraSettingsFromControl, ...cameraSettingsFromUserData };
     const cursorSettings = controlSettings?.cursor || {};
+
+    console.log('[RuntimeEngine] Camera settings:', cameraSettings);
 
     // Configurar modo da câmera
     const cameraMode = cameraSettings.mode || 'follow';
     camera2D.setCameraMode(cameraMode);
 
+    // Configurar viewSize (tamanho da câmera) como zoom
+    // viewSize menor = mais zoom, viewSize maior = menos zoom
+    // Fórmula: zoom = 5 / viewSize (onde 5 é o viewSize padrão)
+    if (cameraSettings.viewSize) {
+      const zoom = 5 / cameraSettings.viewSize;
+      camera2D.setZoom(zoom, true);
+      console.log('[RuntimeEngine] Camera viewSize:', cameraSettings.viewSize, 'zoom:', zoom);
+    }
+
     // Configurar follow smoothing
     if (cameraSettings.followSmoothing) {
       camera2D.followSmoothing = cameraSettings.followSmoothing;
+      console.log('[RuntimeEngine] Camera followSmoothing:', cameraSettings.followSmoothing);
     }
 
     // Configurar edge scroll (só funciona no modo 'free')
@@ -306,8 +358,6 @@ export default class RuntimeEngine {
     camera2D.enableGameMode(cursorSettings);
 
     console.log('[RuntimeEngine] 2D Mode setup complete');
-    console.log('[RuntimeEngine] Camera2D position:', camera2D.getPosition());
-    console.log('[RuntimeEngine] Camera2D zoom:', camera2D.getZoom());
   }
 
   /**
@@ -346,11 +396,25 @@ export default class RuntimeEngine {
       this.cameraController = null;
     }
 
-    // Limpar follow target, desabilitar edge scroll e game mode da câmera 2D
+    // Restaurar câmera 2D ao estado original
     if (this.threeEngine.camera2D) {
       this.threeEngine.camera2D.clearFollowTarget();
       this.threeEngine.camera2D.setEdgeScrollEnabled(false);
       this.threeEngine.camera2D.disableGameMode();
+
+      // Restaurar posição e zoom da câmera 2D
+      if (this.originalCamera2DPosition) {
+        this.threeEngine.camera2D.moveTo(
+          this.originalCamera2DPosition.x,
+          this.originalCamera2DPosition.y,
+          true // instant
+        );
+        console.log('[RuntimeEngine] Restored Camera2D position:', this.originalCamera2DPosition);
+      }
+      if (this.originalCamera2DZoom) {
+        this.threeEngine.camera2D.setZoom(this.originalCamera2DZoom, true);
+        console.log('[RuntimeEngine] Restored Camera2D zoom:', this.originalCamera2DZoom);
+      }
     }
 
     // Restaurar câmera
@@ -378,6 +442,11 @@ export default class RuntimeEngine {
     this.isRunning = false;
     this.playerObject = null;
     this.mainCamera = null;
+
+    // Limpar estados salvos
+    this.originalPlayerPosition = null;
+    this.originalCamera2DPosition = null;
+    this.originalCamera2DZoom = null;
 
     // Esconder instruções
     this.hideInstructions();

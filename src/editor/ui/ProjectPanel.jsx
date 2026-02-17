@@ -545,16 +545,28 @@ export default function ProjectPanel({
   const handleAddPrimitive = (item) => {
     if (!engine) return;
 
+    console.log('[ProjectPanel] handleAddPrimitive:', item.type, 'is2D:', is2D);
+
     const name = generateName(item.type);
     const method = engine[item.method];
 
     if (method) {
-      method.call(engine, name, {
-        color: getRandomColor(),
-        position: [0, 1, 0],
-        metalness: 0.3,
-        roughness: 0.7
-      });
+      // Diferenciar opções para 2D e 3D
+      const options = is2D
+        ? {
+            color: getRandomColor(),
+            position: { x: 0, y: 0 },  // 2D usa objeto { x, y }
+            width: 1,
+            height: 1
+          }
+        : {
+            color: getRandomColor(),
+            position: [0, 1, 0],  // 3D usa array [x, y, z]
+            metalness: 0.3,
+            roughness: 0.7
+          };
+
+      method.call(engine, name, options);
 
       if (onAddObject) onAddObject(name, () => {});
     }

@@ -169,6 +169,7 @@ export default function ControlSettings({ object, onChange }) {
 
     // Merge profundo com defaults para garantir que todas as propriedades existam
     return {
+      gameStyle: userSettings.gameStyle ?? defaults.gameStyle,
       movement: {
         ...defaults.movement,
         // Suportar formato antigo (moveSpeed) e novo (movement.speed)
@@ -292,107 +293,182 @@ export default function ControlSettings({ object, onChange }) {
 
             {expandedSections.mode2d && (
               <div className="subsection-content">
-                <div className="property-row checkbox-row">
-                  <label title="Clique na cena para mover o player até o ponto (estilo Dota/LoL)">
-                    <input
-                      type="checkbox"
-                      checked={settings.movement.clickToMove}
-                      onChange={(e) => updateSetting('movement.clickToMove', e.target.checked)}
-                    />
-                    <span className="checkbox-text">Click-to-Move (Dota style)</span>
-                  </label>
-                </div>
-
-                <div className="property-row checkbox-row">
-                  <label title="Player se move de tile em tile (estilo Pokémon)">
-                    <input
-                      type="checkbox"
-                      checked={settings.movement.gridMovement}
-                      onChange={(e) => updateSetting('movement.gridMovement', e.target.checked)}
-                    />
-                    <span className="checkbox-text">Movimento em Grid</span>
-                  </label>
-                </div>
-
-                {settings.movement.gridMovement && (
-                  <div className="property-row">
-                    <PropertyLabel label="Tamanho Tile" tooltip="Tamanho de cada tile em unidades do mundo" />
-                    <input
-                      type="number"
-                      value={settings.movement.tileSize}
-                      onChange={(e) => updateSetting('movement.tileSize', parseFloat(e.target.value) || 1)}
-                      min="0.25"
-                      max="10"
-                      step="0.25"
-                    />
-                  </div>
-                )}
-
+                {/* Game Style Preset */}
                 <div className="property-row">
-                  <PropertyLabel label="Modo Câmera" tooltip="'Follow' = câmera segue o player (MU). 'Free' = câmera livre (Dota)" />
+                  <PropertyLabel
+                    label="Estilo de Controle"
+                    tooltip="Preset que configura movimento e câmera automaticamente. Escolha 'Personalizado' para configurar manualmente."
+                  />
                   <select
-                    value={settings.camera.mode}
-                    onChange={(e) => updateSetting('camera.mode', e.target.value)}
+                    value={settings.gameStyle || 'followWASD'}
+                    onChange={(e) => {
+                      const style = e.target.value;
+                      updateSetting('gameStyle', style);
+
+                      // Aplicar presets baseado no estilo
+                      switch (style) {
+                        case 'followWASD':
+                          // Câmera Fixa + WASD
+                          updateSetting('camera.mode', 'follow');
+                          updateSetting('movement.clickToMove', false);
+                          updateSetting('movement.gridMovement', false);
+                          updateSetting('camera.edgeScrollEnabled', false);
+                          break;
+                        case 'freeClick':
+                          // Câmera Livre + Click-to-Move
+                          updateSetting('camera.mode', 'free');
+                          updateSetting('movement.clickToMove', true);
+                          updateSetting('movement.gridMovement', false);
+                          updateSetting('camera.edgeScrollEnabled', true);
+                          break;
+                        case 'gridWASD':
+                          // Câmera Fixa + Grid
+                          updateSetting('camera.mode', 'follow');
+                          updateSetting('movement.clickToMove', false);
+                          updateSetting('movement.gridMovement', true);
+                          updateSetting('camera.edgeScrollEnabled', false);
+                          break;
+                        case 'custom':
+                          // Não altera nada, permite configuração manual
+                          break;
+                      }
+                    }}
+                    className="select-input"
                   >
-                    <option value="follow">Seguir Player (MU)</option>
-                    <option value="free">Livre (Dota)</option>
+                    <option value="followWASD">Câmera Fixa + WASD</option>
+                    <option value="freeClick">Câmera Livre + Click-to-Move</option>
+                    <option value="gridWASD">Câmera Fixa + Grid</option>
+                    <option value="custom">Personalizado</option>
                   </select>
                 </div>
 
-                {settings.camera.mode === 'follow' && (
-                  <div className="property-row">
-                    <PropertyLabel label="Suavidade" tooltip="Quão suave a câmera segue o player" />
-                    <input
-                      type="range"
-                      value={settings.camera.followSmoothing}
-                      onChange={(e) => updateSetting('camera.followSmoothing', parseFloat(e.target.value))}
-                      min="1"
-                      max="20"
-                      step="1"
-                    />
-                    <span className="value-display">{settings.camera.followSmoothing}</span>
-                  </div>
-                )}
-
-                <div className="subsection-divider">Edge Scroll</div>
-
-                <div className="property-row checkbox-row">
-                  <label title="Câmera move quando mouse chega na borda da tela">
-                    <input
-                      type="checkbox"
-                      checked={settings.camera.edgeScrollEnabled}
-                      onChange={(e) => updateSetting('camera.edgeScrollEnabled', e.target.checked)}
-                    />
-                    <span className="checkbox-text">Edge Scroll Habilitado</span>
-                  </label>
+                {/* Descrição do estilo selecionado */}
+                <div className="style-description">
+                  {(settings.gameStyle || 'followWASD') === 'followWASD' && (
+                    <span className="style-hint">Câmera sempre centralizada no player. Movimento com teclado (WASD/Setas).</span>
+                  )}
+                  {settings.gameStyle === 'freeClick' && (
+                    <span className="style-hint">Câmera independente com edge scroll. Clique no cenário para mover o player.</span>
+                  )}
+                  {settings.gameStyle === 'gridWASD' && (
+                    <span className="style-hint">Câmera centralizada. Player move de tile em tile com teclado.</span>
+                  )}
+                  {settings.gameStyle === 'custom' && (
+                    <span className="style-hint">Configure cada opção manualmente abaixo.</span>
+                  )}
                 </div>
 
-                {settings.camera.edgeScrollEnabled && (
+                {/* Opções detalhadas - só aparecem no modo Custom */}
+                {settings.gameStyle === 'custom' && (
                   <>
-                    <div className="property-row">
-                      <PropertyLabel label="Margem" tooltip="Distância em pixels da borda para ativar o scroll" />
-                      <input
-                        type="number"
-                        value={settings.camera.edgeScrollMargin}
-                        onChange={(e) => updateSetting('camera.edgeScrollMargin', parseInt(e.target.value) || 30)}
-                        min="10"
-                        max="100"
-                        step="5"
-                      />
+                    <div className="subsection-divider">Movimento</div>
+
+                    <div className="property-row checkbox-row">
+                      <label title="Clique no cenário para mover o player até o ponto clicado">
+                        <input
+                          type="checkbox"
+                          checked={settings.movement.clickToMove}
+                          onChange={(e) => updateSetting('movement.clickToMove', e.target.checked)}
+                        />
+                        <span className="checkbox-text">Click-to-Move</span>
+                        <span className="guide-icon small" title="Player se move até onde você clicar no cenário">?</span>
+                      </label>
                     </div>
 
-                    <div className="property-row">
-                      <PropertyLabel label="Velocidade" tooltip="Velocidade do movimento da câmera" />
-                      <input
-                        type="range"
-                        value={settings.camera.edgeScrollSpeed}
-                        onChange={(e) => updateSetting('camera.edgeScrollSpeed', parseFloat(e.target.value))}
-                        min="1"
-                        max="20"
-                        step="1"
-                      />
-                      <span className="value-display">{settings.camera.edgeScrollSpeed}</span>
+                    <div className="property-row checkbox-row">
+                      <label title="Player se move de tile em tile, um quadrado por vez">
+                        <input
+                          type="checkbox"
+                          checked={settings.movement.gridMovement}
+                          onChange={(e) => updateSetting('movement.gridMovement', e.target.checked)}
+                        />
+                        <span className="checkbox-text">Movimento em Grid</span>
+                        <span className="guide-icon small" title="Movimento discreto, tile a tile. Ideal para jogos de puzzle ou RPG tático.">?</span>
+                      </label>
                     </div>
+
+                    {settings.movement.gridMovement && (
+                      <div className="property-row">
+                        <PropertyLabel label="Tamanho Tile" tooltip="Tamanho de cada tile em unidades do mundo" />
+                        <input
+                          type="number"
+                          value={settings.movement.tileSize}
+                          onChange={(e) => updateSetting('movement.tileSize', parseFloat(e.target.value) || 1)}
+                          min="0.25"
+                          max="10"
+                          step="0.25"
+                        />
+                      </div>
+                    )}
+
+                    <div className="subsection-divider">Câmera</div>
+
+                    <div className="property-row">
+                      <PropertyLabel label="Modo Câmera" tooltip="'Fixa' = câmera sempre centralizada no player. 'Livre' = câmera independente do player." />
+                      <select
+                        value={settings.camera.mode}
+                        onChange={(e) => updateSetting('camera.mode', e.target.value)}
+                      >
+                        <option value="follow">Fixa (Segue Player)</option>
+                        <option value="free">Livre (Independente)</option>
+                      </select>
+                    </div>
+
+                    {settings.camera.mode === 'follow' && (
+                      <div className="property-row">
+                        <PropertyLabel label="Suavidade" tooltip="Quão suave a câmera segue o player. Maior = mais suave." />
+                        <input
+                          type="range"
+                          value={settings.camera.followSmoothing}
+                          onChange={(e) => updateSetting('camera.followSmoothing', parseFloat(e.target.value))}
+                          min="1"
+                          max="20"
+                          step="1"
+                        />
+                        <span className="value-display">{settings.camera.followSmoothing}</span>
+                      </div>
+                    )}
+
+                    <div className="property-row checkbox-row">
+                      <label title="Câmera move automaticamente quando o mouse chega na borda da tela">
+                        <input
+                          type="checkbox"
+                          checked={settings.camera.edgeScrollEnabled}
+                          onChange={(e) => updateSetting('camera.edgeScrollEnabled', e.target.checked)}
+                        />
+                        <span className="checkbox-text">Edge Scroll</span>
+                        <span className="guide-icon small" title="Move a câmera quando o mouse atinge as bordas da tela. Útil para explorar mapas grandes.">?</span>
+                      </label>
+                    </div>
+
+                    {settings.camera.edgeScrollEnabled && (
+                      <>
+                        <div className="property-row">
+                          <PropertyLabel label="Margem" tooltip="Distância em pixels da borda para ativar o scroll" />
+                          <input
+                            type="number"
+                            value={settings.camera.edgeScrollMargin}
+                            onChange={(e) => updateSetting('camera.edgeScrollMargin', parseInt(e.target.value) || 30)}
+                            min="10"
+                            max="100"
+                            step="5"
+                          />
+                        </div>
+
+                        <div className="property-row">
+                          <PropertyLabel label="Velocidade" tooltip="Velocidade do movimento da câmera no edge scroll" />
+                          <input
+                            type="range"
+                            value={settings.camera.edgeScrollSpeed}
+                            onChange={(e) => updateSetting('camera.edgeScrollSpeed', parseFloat(e.target.value))}
+                            min="1"
+                            max="20"
+                            step="1"
+                          />
+                          <span className="value-display">{settings.camera.edgeScrollSpeed}</span>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
 
@@ -693,16 +769,18 @@ export default function ControlSettings({ object, onChange }) {
  */
 export function getDefaultSettings() {
   return {
+    // Estilo de controle (preset)
+    gameStyle: 'followWASD', // 'followWASD', 'freeClick', 'gridWASD', 'custom'
     movement: {
       speed: 5,
       sprintMultiplier: 2,
       jumpForce: 8,
       gravity: 20,
       rotationSpeed: 10,
-      // Click-to-move (Dota style)
+      // Click-to-move
       clickToMove: false,
       clickStopDistance: 0.1,
-      // Grid movement (Pokémon style)
+      // Grid movement
       gridMovement: false,
       tileSize: 1
     },

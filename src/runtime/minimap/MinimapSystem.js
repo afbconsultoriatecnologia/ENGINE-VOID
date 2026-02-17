@@ -17,6 +17,11 @@ export default class MinimapSystem {
     this.movementDirection = 0; // Direção do movimento (para 2D)
     this.cameraAngle = 0; // Ângulo da câmera (para rotação do minimap)
 
+    // Posição da câmera (para modo câmera livre)
+    this.cameraPosition = { x: 0, z: 0 };
+    // Modo de visualização: 'player' = centralizado no player, 'camera' = centralizado na câmera
+    this.viewMode = 'player';
+
     // Objetos marcados no mapa (enemies, items, waypoints)
     this.markers = [];
 
@@ -179,6 +184,31 @@ export default class MinimapSystem {
   }
 
   /**
+   * Define a posição da câmera (para modo câmera livre)
+   * @param {number} x - Posição X da câmera
+   * @param {number} z - Posição Z (ou Y em 2D) da câmera
+   */
+  setCameraPosition(x, z) {
+    this.cameraPosition.x = x;
+    this.cameraPosition.z = z;
+  }
+
+  /**
+   * Define o modo de visualização do minimap
+   * @param {'player'|'camera'} mode - 'player' = centralizado no player, 'camera' = centralizado na câmera
+   */
+  setViewMode(mode) {
+    this.viewMode = mode;
+  }
+
+  /**
+   * Retorna a posição central atual baseado no modo de visualização
+   */
+  getCenterPosition() {
+    return this.viewMode === 'camera' ? this.cameraPosition : this.playerPosition;
+  }
+
+  /**
    * Atualiza lista de objetos por tag na cena
    */
   updateTaggedObjects() {
@@ -241,8 +271,9 @@ export default class MinimapSystem {
 
   /**
    * Converte coordenadas do mundo para coordenadas do minimap (0-1)
-   * IMPORTANTE: O player está sempre no centro (0.5, 0.5)
-   * Tudo mais é posicionado relativo ao player
+   * O centro do minimap depende do viewMode:
+   * - 'player': centralizado no player (0.5, 0.5)
+   * - 'camera': centralizado na câmera (0.5, 0.5)
    */
   worldToMinimap(worldX, worldZ) {
     // Calcular raio de visão baseado no worldBounds e scale
@@ -252,17 +283,20 @@ export default class MinimapSystem {
     const scale = this.settings.scale || 1;
 
     // Raio de visão = metade do mundo dividido pela escala
-    // Com scale=1, vemos metade do mundo em cada direção do player
+    // Com scale=1, vemos metade do mundo em cada direção do centro
     // Com scale=2, vemos 1/4 do mundo em cada direção (mais zoom)
     const viewRadiusX = (worldWidth / 2) / scale;
     const viewRadiusZ = (worldHeight / 2) / scale;
 
-    // Offset do objeto em relação ao player
-    const offsetX = worldX - this.playerPosition.x;
-    const offsetZ = worldZ - this.playerPosition.z;
+    // Obter posição central baseado no modo de visualização
+    const centerPos = this.getCenterPosition();
+
+    // Offset do objeto em relação ao centro (player ou câmera)
+    const offsetX = worldX - centerPos.x;
+    const offsetZ = worldZ - centerPos.z;
 
     // Converter para coordenadas do minimap (0-1)
-    // Player está no centro (0.5, 0.5)
+    // Centro está em (0.5, 0.5)
     // Objetos são posicionados pelo offset dividido pelo raio de visão
     // NOTA: Y do canvas é invertido (0 = topo), então usamos MENOS para o eixo vertical
     const mapX = 0.5 + (offsetX / viewRadiusX) * 0.5;
@@ -487,19 +521,23 @@ export default class MinimapSystem {
     return {
       playerPosition: this.playerPosition,
       playerRotation: this.playerRotation,
+      cameraPosition: this.cameraPosition,
       cameraAngle: this.cameraAngle,
+      viewMode: this.viewMode,
+      centerPosition: this.getCenterPosition(),
       markers: this.markers,
       settings: this.settings
     };
   }
 
   /**
-   * Retorna posição do player formatada para display
+   * Retorna posição central formatada para display (player ou câmera dependendo do viewMode)
    */
   getFormattedCoordinates() {
+    const pos = this.getCenterPosition();
     return {
-      x: Math.round(this.playerPosition.x * 10) / 10,
-      z: Math.round(this.playerPosition.z * 10) / 10
+      x: Math.round(pos.x * 10) / 10,
+      z: Math.round(pos.z * 10) / 10
     };
   }
 

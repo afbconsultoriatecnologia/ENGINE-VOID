@@ -435,3 +435,25 @@
   border-color: var(--danger);
   color: white;
 }
+
+/* Style Description */
+.control-settings .style-description {
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: var(--bg-dark);
+  border-radius: 3px;
+  border-left: 2px solid var(--accent);
+}
+
+.control-settings .style-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* Select input wider for presets */
+.control-settings .select-input {
+  flex: 1 !important;
+  max-width: 180px !important;
+}

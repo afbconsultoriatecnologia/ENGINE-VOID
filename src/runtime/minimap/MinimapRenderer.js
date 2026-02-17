@@ -54,14 +54,15 @@ export default class MinimapRenderer {
   render(minimapSystem, fogManager) {
     const ctx = this.ctx;
     const data = minimapSystem.getRenderData();
-    const { settings, playerPosition, playerRotation, cameraAngle, markers } = data;
+    const { settings, playerPosition, playerRotation, cameraAngle, markers, centerPosition } = data;
 
 
     // Limpar canvas
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Atualizar posição do player para renderização de imagem de fundo
-    this.updatePlayerPosition(playerPosition.x, playerPosition.z);
+    // Atualizar posição central para renderização de imagem de fundo
+    // (usa posição da câmera em modo livre, ou posição do player em modo seguir)
+    this.updatePlayerPosition(centerPosition.x, centerPosition.z);
 
     // Aplicar máscara circular se necessário
     ctx.save();
@@ -222,12 +223,13 @@ export default class MinimapRenderer {
   }
 
   /**
-   * Desenha grid (relativo ao player - linhas se movem com o mapa)
+   * Desenha grid (relativo ao centro - linhas se movem com o mapa)
    */
   drawGrid(minimapSystem, settings) {
     const ctx = this.ctx;
     const gridSize = settings.gridSize;
-    const playerPos = minimapSystem.playerPosition;
+    // Usar posição central (player ou câmera dependendo do viewMode)
+    const centerPos = minimapSystem.getCenterPosition();
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.lineWidth = 0.5;
@@ -240,16 +242,16 @@ export default class MinimapRenderer {
     const viewRadiusX = (worldWidth / 2) / scale;
     const viewRadiusZ = (worldHeight / 2) / scale;
 
-    // Encontrar a primeira linha de grid à esquerda/acima do player
-    const startX = Math.floor((playerPos.x - viewRadiusX) / gridSize) * gridSize;
-    const startZ = Math.floor((playerPos.z - viewRadiusZ) / gridSize) * gridSize;
-    const endX = Math.ceil((playerPos.x + viewRadiusX) / gridSize) * gridSize;
-    const endZ = Math.ceil((playerPos.z + viewRadiusZ) / gridSize) * gridSize;
+    // Encontrar a primeira linha de grid à esquerda/acima do centro
+    const startX = Math.floor((centerPos.x - viewRadiusX) / gridSize) * gridSize;
+    const startZ = Math.floor((centerPos.z - viewRadiusZ) / gridSize) * gridSize;
+    const endX = Math.ceil((centerPos.x + viewRadiusX) / gridSize) * gridSize;
+    const endZ = Math.ceil((centerPos.z + viewRadiusZ) / gridSize) * gridSize;
 
     // Linhas verticais
     for (let x = startX; x <= endX; x += gridSize) {
-      const mapPos = minimapSystem.worldToMinimap(x, playerPos.z - viewRadiusZ);
-      const mapPosEnd = minimapSystem.worldToMinimap(x, playerPos.z + viewRadiusZ);
+      const mapPos = minimapSystem.worldToMinimap(x, centerPos.z - viewRadiusZ);
+      const mapPosEnd = minimapSystem.worldToMinimap(x, centerPos.z + viewRadiusZ);
 
       const screenX = mapPos.x * this.canvas.width;
       const screenY1 = 0;
@@ -263,7 +265,7 @@ export default class MinimapRenderer {
 
     // Linhas horizontais
     for (let z = startZ; z <= endZ; z += gridSize) {
-      const mapPos = minimapSystem.worldToMinimap(playerPos.x - viewRadiusX, z);
+      const mapPos = minimapSystem.worldToMinimap(centerPos.x - viewRadiusX, z);
 
       const screenX1 = 0;
       const screenX2 = this.canvas.width;
@@ -284,7 +286,8 @@ export default class MinimapRenderer {
     const fogData = fogManager.getRenderData();
     const { exploredGrid, visibleGrid, gridWidth, gridHeight, mode, worldBounds } = fogData;
     const fogSettings = settings.fogOfWar;
-    const playerPos = minimapSystem.playerPosition;
+    // Usar posição central (player ou câmera dependendo do viewMode)
+    const centerPos = minimapSystem.getCenterPosition();
 
     // Calcular área visível do mundo
     const bounds = settings.worldBounds;
@@ -301,11 +304,11 @@ export default class MinimapRenderer {
     // Converter cor de fog para RGB
     const fogColor = this.hexToRgb(fogSettings.unexploredColor);
 
-    // Calcular quais células de fog são visíveis
-    const visibleMinX = playerPos.x - viewRadiusX;
-    const visibleMaxX = playerPos.x + viewRadiusX;
-    const visibleMinZ = playerPos.z - viewRadiusZ;
-    const visibleMaxZ = playerPos.z + viewRadiusZ;
+    // Calcular quais células de fog são visíveis (baseado no centro da visualização)
+    const visibleMinX = centerPos.x - viewRadiusX;
+    const visibleMaxX = centerPos.x + viewRadiusX;
+    const visibleMinZ = centerPos.z - viewRadiusZ;
+    const visibleMaxZ = centerPos.z + viewRadiusZ;
 
     // Converter para índices de grid
     const startGX = Math.max(0, Math.floor((visibleMinX - bounds.minX) / cellWorldWidth));
@@ -495,11 +498,27 @@ export default class MinimapRenderer {
   drawPlayer(minimapSystem, position, rotation, cameraAngle, settings) {
     const ctx = this.ctx;
     const is2D = minimapSystem.is2D;
+    const viewMode = minimapSystem.viewMode;
 
+    let screenX, screenY;
 
-    // O player está sempre no centro do minimap
-    const screenX = this.canvas.width / 2;
-    const screenY = this.canvas.height / 2;
+    // Se o viewMode é 'camera', o player pode estar fora do centro
+    if (viewMode === 'camera') {
+      // Converter posição do player para coordenadas do minimap
+      const mapPos = minimapSystem.worldToMinimap(position.x, position.z);
+      screenX = mapPos.x * this.canvas.width;
+      screenY = mapPos.y * this.canvas.height;
+
+      // Verificar se o player está dentro dos limites do minimap
+      if (mapPos.x < 0 || mapPos.x > 1 || mapPos.y < 0 || mapPos.y > 1) {
+        // Player fora da área visível - não desenhar
+        return;
+      }
+    } else {
+      // Modo 'player' - player está sempre no centro do minimap
+      screenX = this.canvas.width / 2;
+      screenY = this.canvas.height / 2;
+    }
 
     ctx.save();
     ctx.translate(screenX, screenY);

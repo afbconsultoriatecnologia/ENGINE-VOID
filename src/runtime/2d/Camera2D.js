@@ -688,26 +688,26 @@ export default class Camera2D {
     let dirX = 0;
     let dirY = 0;
 
-    // Borda esquerda
+    // Borda esquerda - cursor trava no limite da margem
     if (this.virtualMouseX <= margin) {
       dirX = -1;
-      this.virtualMouseX = 0; // Travar na borda
+      this.virtualMouseX = margin; // Travar no limite interno da margem
     }
-    // Borda direita
-    else if (this.virtualMouseX >= rect.width - margin) {
+    // Borda direita - cursor trava no limite da margem
+    if (this.virtualMouseX >= rect.width - margin) {
       dirX = 1;
-      this.virtualMouseX = rect.width; // Travar na borda
+      this.virtualMouseX = rect.width - margin; // Travar no limite interno da margem
     }
 
-    // Borda superior
+    // Borda superior - cursor trava no limite da margem
     if (this.virtualMouseY <= margin) {
       dirY = 1;
-      this.virtualMouseY = 0; // Travar na borda
+      this.virtualMouseY = margin; // Travar no limite interno da margem
     }
-    // Borda inferior
-    else if (this.virtualMouseY >= rect.height - margin) {
+    // Borda inferior - cursor trava no limite da margem
+    if (this.virtualMouseY >= rect.height - margin) {
       dirY = -1;
-      this.virtualMouseY = rect.height; // Travar na borda
+      this.virtualMouseY = rect.height - margin; // Travar no limite interno da margem
     }
 
     this.edgeScrollDirection.x = dirX;
@@ -732,7 +732,7 @@ export default class Camera2D {
     const margin = this.edgeScrollMargin;
     const rect = this.domElement.getBoundingClientRect();
 
-    // Posição do mouse real
+    // Posição do mouse real (coordenadas da janela)
     const mouseX = this.mousePosition.x;
     const mouseY = this.mousePosition.y;
 
@@ -740,9 +740,23 @@ export default class Camera2D {
     const relX = mouseX - rect.left;
     const relY = mouseY - rect.top;
 
+    // Também verificar proximidade com as bordas da janela
+    // Isso ajuda quando o canvas não preenche toda a janela
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const nearWindowLeft = mouseX <= margin;
+    const nearWindowRight = mouseX >= windowWidth - margin;
+    const nearWindowTop = mouseY <= margin;
+    const nearWindowBottom = mouseY >= windowHeight - margin;
+
+    // Verificar se está na zona de edge scroll (canvas OU janela)
+    const inLeftZone = relX <= margin || nearWindowLeft;
+    const inRightZone = relX >= rect.width - margin || nearWindowRight;
+    const inTopZone = relY <= margin || nearWindowTop;
+    const inBottomZone = relY >= rect.height - margin || nearWindowBottom;
+
     // Verificar se mouse está completamente dentro (fora das margens)
-    const isInsideCenter = relX > margin && relX < rect.width - margin &&
-                           relY > margin && relY < rect.height - margin;
+    const isInsideCenter = !inLeftZone && !inRightZone && !inTopZone && !inBottomZone;
 
     // Se mouse está no centro do canvas, resetar estado e sincronizar
     if (isInsideCenter) {
@@ -762,33 +776,33 @@ export default class Camera2D {
     // Calcular direção do scroll e posição do cursor virtual
     let dirX = 0;
     let dirY = 0;
-    let cursorX = relX;
-    let cursorY = relY;
+    let cursorX = Math.max(margin, Math.min(rect.width - margin, relX));
+    let cursorY = Math.max(margin, Math.min(rect.height - margin, relY));
 
-    // Borda esquerda
-    if (relX <= margin) {
+    // Borda esquerda - cursor trava no limite da margem
+    if (inLeftZone) {
       dirX = -1;
-      cursorX = margin / 2;
-      if (relX < 0) this.isMouseOutside = true;
+      cursorX = margin;
+      if (relX < 0 || nearWindowLeft) this.isMouseOutside = true;
     }
-    // Borda direita
-    if (relX >= rect.width - margin) {
+    // Borda direita - cursor trava no limite da margem
+    if (inRightZone) {
       dirX = 1;
-      cursorX = rect.width - margin / 2;
-      if (relX > rect.width) this.isMouseOutside = true;
+      cursorX = rect.width - margin;
+      if (relX > rect.width || nearWindowRight) this.isMouseOutside = true;
     }
 
-    // Borda superior
-    if (relY <= margin) {
+    // Borda superior - cursor trava no limite da margem
+    if (inTopZone) {
       dirY = 1;
-      cursorY = margin / 2;
-      if (relY < 0) this.isMouseOutside = true;
+      cursorY = margin;
+      if (relY < 0 || nearWindowTop) this.isMouseOutside = true;
     }
-    // Borda inferior
-    if (relY >= rect.height - margin) {
+    // Borda inferior - cursor trava no limite da margem
+    if (inBottomZone) {
       dirY = -1;
-      cursorY = rect.height - margin / 2;
-      if (relY > rect.height) this.isMouseOutside = true;
+      cursorY = rect.height - margin;
+      if (relY > rect.height || nearWindowBottom) this.isMouseOutside = true;
     }
 
     // Definir cursor baseado na direção

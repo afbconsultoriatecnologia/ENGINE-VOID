@@ -124,9 +124,15 @@ export default class Character2DController {
     }
 
     // Detectar se tem gravidade (platformer)
+    // Apenas tem gravidade se gravity > 0 explicitamente
     this.hasGravity = this.gravity > 0;
+
+    // Só definir groundLevel se realmente tiver gravidade
     if (this.hasGravity) {
       this.groundLevel = this.character.position.y;
+    } else {
+      // Para top-down, não usar groundLevel
+      this.groundLevel = null;
     }
 
     // Configurar modo da câmera
@@ -134,7 +140,15 @@ export default class Character2DController {
       this.updateCameraMode();
     }
 
-    console.log('[Character2DController] Enabled, hasGravity:', this.hasGravity, 'clickToMove:', this.clickToMove, 'cameraMode:', this.cameraMode);
+    console.log('[Character2DController] Enabled');
+    console.log('[Character2DController] Settings:', {
+      speed: this.moveSpeed,
+      gravity: this.gravity,
+      hasGravity: this.hasGravity,
+      groundLevel: this.groundLevel,
+      clickToMove: this.clickToMove,
+      cameraMode: this.cameraMode
+    });
   }
 
   /**
@@ -213,12 +227,17 @@ export default class Character2DController {
     if (event.shiftKey) return;
 
     // Converter posição do mouse para posição do mundo
-    if (!this.camera2D) {
-      console.warn('[Character2DController] No camera2D for click-to-move');
+    if (!this.camera2D || !this.domElement) {
+      console.warn('[Character2DController] No camera2D or domElement for click-to-move');
       return;
     }
 
-    const worldPos = this.camera2D.screenToWorld(event.clientX, event.clientY);
+    // Converter coordenadas da janela para coordenadas do canvas
+    const rect = this.domElement.getBoundingClientRect();
+    const canvasX = event.clientX - rect.left;
+    const canvasY = event.clientY - rect.top;
+
+    const worldPos = this.camera2D.screenToWorld(canvasX, canvasY);
 
     // Definir alvo do click
     this.clickTarget = new THREE.Vector2(worldPos.x, worldPos.y);
@@ -231,34 +250,26 @@ export default class Character2DController {
     const code = event.code;
     const k = this.settings.keys;
 
-    // Debug: log all key presses
-    console.log('[Character2DController] KeyDown:', code, 'Expected keys:', k);
-
     // Forward (Up/W)
     if (code === k.forward || code === k.forwardAlt) {
       this.keys.forward = true;
-      console.log('[Character2DController] Forward key pressed');
     }
     // Backward (Down/S)
     else if (code === k.backward || code === k.backwardAlt) {
       this.keys.backward = true;
-      console.log('[Character2DController] Backward key pressed');
     }
     // Left (A/ArrowLeft)
     else if (code === k.left || code === k.leftAlt) {
       this.keys.left = true;
-      console.log('[Character2DController] Left key pressed');
     }
     // Right (D/ArrowRight)
     else if (code === k.right || code === k.rightAlt) {
       this.keys.right = true;
-      console.log('[Character2DController] Right key pressed');
     }
     // Jump
     else if (code === k.jump) {
       if (this.isGrounded) {
         this.keys.jump = true;
-        console.log('[Character2DController] Jump key pressed');
       }
     }
     // Sprint
@@ -489,11 +500,13 @@ export default class Character2DController {
       this.velocity.y = moveY * speed;
     }
 
-    // Aplicar movimento
-    this.character.position.x += this.velocity.x * deltaTime;
-    this.character.position.y += this.velocity.y * deltaTime;
+    // Aplicar movimento apenas se houver velocidade
+    if (this.velocity.x !== 0 || this.velocity.y !== 0) {
+      this.character.position.x += this.velocity.x * deltaTime;
+      this.character.position.y += this.velocity.y * deltaTime;
+    }
 
-    // Colisão com o chão (apenas platformer)
+    // Colisão com o chão (apenas platformer com gravidade)
     if (this.hasGravity && this.groundLevel !== null) {
       if (this.character.position.y <= this.groundLevel) {
         this.character.position.y = this.groundLevel;

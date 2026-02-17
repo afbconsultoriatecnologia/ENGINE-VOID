@@ -152,6 +152,22 @@ export default function MinimapOverlay({ runtimeEngine }) {
         minimapSystemRef.current.setCameraAngle(runtimeEngine.cameraController.angle);
       }
 
+      // Atualizar posição e modo da câmera para o minimap (modo 2D)
+      // A câmera 2D está em threeEngine.camera2D
+      const camera2D = runtimeEngine.threeEngine?.camera2D;
+      if (camera2D) {
+        const cameraPos = camera2D.getPosition();
+        const cameraMode = camera2D.getCameraMode();
+
+        // Definir posição da câmera no minimap
+        minimapSystemRef.current.setCameraPosition(cameraPos.x, cameraPos.y);
+
+        // Definir modo de visualização baseado no modo da câmera
+        // 'follow' = minimap centralizado no player
+        // 'free' = minimap centralizado na câmera
+        minimapSystemRef.current.setViewMode(cameraMode === 'free' ? 'camera' : 'player');
+      }
+
       // Passar imagem de fundo carregada para o sistema (se disponível)
       if (backgroundImageRef.current) {
         minimapSystemRef.current.settings.backgroundImageLoaded = backgroundImageRef.current;

@@ -236,23 +236,39 @@ export default function InspectorPanel2D({ engine, selectedObject, scriptManager
 
     selectedObject.userData.controlSettings = selectedObject.userData.controlSettings || {};
     selectedObject.userData.controlSettings.movement = selectedObject.userData.controlSettings.movement || {};
+    selectedObject.userData.controlSettings.camera = selectedObject.userData.controlSettings.camera || {};
 
     switch (mode) {
       case 'topDown':
-        // Top-down: sem gravidade, movimento livre em X/Y
+        // Top-down: sem gravidade, movimento livre em X/Y, câmera fixa
+        selectedObject.userData.controlSettings.gameStyle = 'followWASD';
         selectedObject.userData.controlSettings.movement.gravity = 0;
         selectedObject.userData.controlSettings.movement.speed = 5;
+        selectedObject.userData.controlSettings.movement.clickToMove = false;
+        selectedObject.userData.controlSettings.movement.gridMovement = false;
+        selectedObject.userData.controlSettings.camera.mode = 'follow';
+        selectedObject.userData.controlSettings.camera.edgeScrollEnabled = false;
         break;
       case 'platformer':
-        // Platformer: gravidade, pulo
+        // Platformer: gravidade, pulo, câmera fixa
+        selectedObject.userData.controlSettings.gameStyle = 'followWASD';
         selectedObject.userData.controlSettings.movement.gravity = 20;
         selectedObject.userData.controlSettings.movement.jumpForce = 10;
         selectedObject.userData.controlSettings.movement.speed = 5;
+        selectedObject.userData.controlSettings.movement.clickToMove = false;
+        selectedObject.userData.controlSettings.movement.gridMovement = false;
+        selectedObject.userData.controlSettings.camera.mode = 'follow';
+        selectedObject.userData.controlSettings.camera.edgeScrollEnabled = false;
         break;
       case 'clickToMove':
-        // Click to move: sem gravidade
+        // Click to move: sem gravidade, câmera livre, edge scroll
+        selectedObject.userData.controlSettings.gameStyle = 'freeClick';
         selectedObject.userData.controlSettings.movement.gravity = 0;
         selectedObject.userData.controlSettings.movement.speed = 3;
+        selectedObject.userData.controlSettings.movement.clickToMove = true;
+        selectedObject.userData.controlSettings.movement.gridMovement = false;
+        selectedObject.userData.controlSettings.camera.mode = 'free';
+        selectedObject.userData.controlSettings.camera.edgeScrollEnabled = true;
         break;
     }
   };
